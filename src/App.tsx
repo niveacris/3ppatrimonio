@@ -167,15 +167,8 @@ export default function App() {
       {/* Header Landmark */}
       <Header
         onOpenForm={handleScrollToForm}
-        onOpenCRM={() => setCrmOpen(true)}
-        onOpenPartnerLogin={() => setLoginModalOpen(true)}
-        onOpenWPExport={() => setWpExportModalOpen(true)}
-        onOpenInstagramStudio={() => setInstagramModalOpen(true)}
         onToggleCompactHero={() => setIsCompactHero(!isCompactHero)}
         isCompactHero={isCompactHero}
-        leadCount={leads.length}
-        partnerUser={partnerUser}
-        onLogoutPartner={handleLogoutPartner}
       />
 
       {/* Main Content Landmark */}
@@ -214,9 +207,16 @@ export default function App() {
         <FinalCTA onOpenForm={handleScrollToForm} />
       </main>
 
+      {/* Footer Landmark with Administrative Area */}
       <Footer 
         onOpenForm={handleScrollToForm} 
+        onOpenCRM={() => setCrmOpen(true)}
+        onOpenPartnerLogin={() => setLoginModalOpen(true)}
         onOpenInstagramStudio={() => setInstagramModalOpen(true)} 
+        onOpenWPExport={() => setWpExportModalOpen(true)}
+        partnerUser={partnerUser}
+        onLogoutPartner={handleLogoutPartner}
+        leadCount={leads.length}
       />
 
       {/* Floating Sticky Actions (Desktop) */}
