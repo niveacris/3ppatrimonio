@@ -1,0 +1,6 @@
+{
+  "name": "3P Patrimônio - Consultoria em Consórcios",
+  "description": "Landing page profissional de alta conversão para consultoria de planejamento patrimonial e consórcios imobiliários e de veículos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/* Light Theme Overrides */
+html.light-theme {
+  color-scheme: light;
+}
+
+html.light-theme body,
+html.light-theme .bg-slate-900,
+html.light-theme .bg-slate-950 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Containers and Cards in Light Theme */
+html.light-theme .bg-slate-900\/95,
+html.light-theme .bg-slate-900\/90,
+html.light-theme .bg-slate-900\/80,
+html.light-theme .bg-slate-900\/70,
+html.light-theme .bg-slate-900\/60,
+html.light-theme .bg-slate-950\/90,
+html.light-theme .bg-slate-950\/80,
+html.light-theme .bg-slate-950\/60,
+html.light-theme .bg-slate-950\/40,
+html.light-theme .bg-slate-950 {
+  background-color: #ffffff !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light-theme .bg-slate-800,
+html.light-theme .bg-slate-800\/80,
+html.light-theme .bg-slate-800\/50,
+html.light-theme .bg-slate-800\/30 {
+  background-color: #f1f5f9 !important;
+}
+
+/* Borders in Light Theme */
+html.light-theme .border-slate-800,
+html.light-theme .border-slate-800\/80,
+html.light-theme .border-slate-800\/50,
+html.light-theme .border-slate-700,
+html.light-theme .border-slate-700\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Text Colors in Light Theme */
+html.light-theme .text-slate-100,
+html.light-theme .text-slate-200,
+html.light-theme .text-white {
+  color: #0f172a !important;
+}
+
+html.light-theme .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light-theme .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Amber / Gold Text & Background in Light Theme for contrast */
+html.light-theme .text-amber-400,
+html.light-theme .text-amber-300 {
+  color: #d97706 !important;
+}
+
+html.light-theme .bg-amber-400 {
+  background-color: #d97706 !important;
+}
+
+/* Form inputs in Light Theme */
+html.light-theme input,
+html.light-theme select,
+html.light-theme textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light-theme input::placeholder,
+html.light-theme textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Accessibility Helper Classes */
+html.a11y-high-contrast {
+  filter: contrast(140%) !important;
+}
+
+html.a11y-high-contrast body {
+  background-color: #020617 !important;
+  color: #ffffff !important;
+}
+
+html.a11y-grayscale {
+  filter: grayscale(100%) !important;
+}
+
+html.a11y-invert {
+  filter: invert(100%) hue-rotate(180deg) !important;
+}
+
+html.a11y-readable-font * {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif !important;
+  letter-spacing: 0.02em !important;
+  word-spacing: 0.05em !important;
+}
+
+html.a11y-highlight-links a,
+html.a11y-highlight-links button {
+  text-decoration: underline !important;
+  text-decoration-color: #f59e0b !important;
+  text-decoration-thickness: 2px !important;
+}
+
+/* Accessible focus ring style */
+:focus-visible {
+  outline: 3px solid #fbbf24 !important;
+  outline-offset: 2px !important;
+}
+
+/* VLibras Widget Vertical Position Adjustment */
+[vw] .vw-access-button,
+.vw-access-button,
+div[vw] [vw-access-button],
+.vw-plugin-wrapper {
+  top: 20% !important;
+  transform: translateY(0) !important;
+}
+

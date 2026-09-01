@@ -1,0 +1,62 @@
+{
+  "leads": [
+    {
+      "id": "lead-101",
+      "createdAt": "2026-09-01T07:52:38.183Z",
+      "name": "Carlos Eduardo Silva",
+      "whatsapp": "(11) 98765-4321",
+      "email": "carlos.silva@empresa.com.br",
+      "objective": "Investir em imóveis",
+      "creditAmount": "De R$ 500 mil a R$ 1 milhão",
+      "monthlyInstallment": "De R$ 2.500 a R$ 5.000",
+      "timeFrame": "Entre 1 e 3 anos",
+      "hasBiddingFunds": "Sim",
+      "source": "Instagram",
+      "message": "Gostaria de entender a estratégia de 5 cotas de R$100k para aluguel residencial.",
+      "consent": true,
+      "status": "Novo",
+      "notes": "Lead vindo de anúncio do Instagram sobre Múltiplas Cotas.",
+      "utmSource": "instagram",
+      "utmMedium": "cpc",
+      "utmCampaign": "campanha_multi_cotas"
+    },
+    {
+      "id": "lead-102",
+      "createdAt": "2026-08-31T07:52:38.184Z",
+      "name": "Mariana Alcantara",
+      "whatsapp": "(21) 99887-1122",
+      "email": "mariana.alcantara@gmail.com",
+      "objective": "Comprar um imóvel",
+      "creditAmount": "De R$ 300 mil a R$ 500 mil",
+      "monthlyInstallment": "De R$ 2.500 a R$ 5.000",
+      "timeFrame": "Em até 1 ano",
+      "hasBiddingFunds": "Sim",
+      "source": "Google",
+      "message": "Preciso trocar de apartamento nos próximos 8 meses. Tenho saldo de FGTS para lance.",
+      "consent": true,
+      "status": "Em Contato",
+      "notes": "Primeiro contato realizado via WhatsApp. Reunião agendada para quinta-feira.",
+      "utmSource": "google",
+      "utmMedium": "organic"
+    },
+    {
+      "id": "lead-103",
+      "createdAt": "2026-08-29T11:52:38.184Z",
+      "name": "Roberto Mendes Transportes",
+      "whatsapp": "(41) 97123-8899",
+      "email": "roberto@rmendestransportes.com.br",
+      "objective": "Adquirir máquinas ou veículos pesados",
+      "creditAmount": "Acima de R$ 1 milhão",
+      "monthlyInstallment": "Acima de R$ 10.000",
+      "timeFrame": "Entre 1 e 3 anos",
+      "hasBiddingFunds": "Talvez",
+      "source": "Indicação",
+      "message": "Planejamento de renovação de frota de 4 caminhões para o próximo ano.",
+      "consent": true,
+      "status": "Análise Enviada",
+      "notes": "Proposta de 4 cartas de R$ 350 mil enviada por e-mail.",
+      "utmSource": "indicacao"
+    }
+  ],
+  "pageViews": 146
+}
