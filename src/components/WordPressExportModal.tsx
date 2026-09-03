@@ -108,11 +108,11 @@ get_header(); ?>
 if (!defined('ABSPATH')) exit;
 
 // 1. Criação de tabela MySQL ao ativar o plugin no Hostinger
-register_activation_hook(__FILE__, '3p_create_leads_table');
+register_activation_hook(__FILE__, 'p3_create_leads_table');
 
-function 3p_create_leads_table() {
+function p3_create_leads_table() {
   global $wpdb;
-  $table_name = $wpdb->prefix . '3p_leads';
+  $table_name = $wpdb->prefix . 'p3_leads';
   $charset_collate = $wpdb->get_charset_collate();
 
   $sql = "CREATE TABLE $table_name (
@@ -135,40 +135,45 @@ function 3p_create_leads_table() {
 }
 
 // 2. Adiciona Menu "3P Patrimônio - Leads" no Painel WordPress
-add_action('admin_menu', '3p_register_admin_menu');
+add_action('admin_menu', 'p3_register_admin_menu');
 
-function 3p_register_admin_menu() {
+function p3_register_admin_menu() {
   add_menu_page(
     '3P Patrimônio - Leads',
     '3P Patrimônio',
     'manage_options',
-    '3p-leads-manager',
-    '3p_render_crm_page',
+    'p3-leads-manager',
+    'p3_render_crm_page',
     'dashicons-chart-line',
     30
   );
 }
 
-function 3p_render_crm_page() {
+function p3_render_crm_page() {
   global $wpdb;
-  $table_name = $wpdb->prefix . '3p_leads';
+  $table_name = $wpdb->prefix . 'p3_leads';
   $leads = $wpdb->get_results("SELECT * FROM $table_name ORDER BY id DESC");
+  $total = is_array($leads) ? count($leads) : 0;
   
   echo '<div class="wrap">';
   echo '<h1 style="color:#d97706;">🏛️ Painel de Movimentação dos Sócios - 3P Patrimônio</h1>';
-  echo '<p>Hospedado no Hostinger WordPress • Total de Leads: ' . count($leads) . '</p>';
+  echo '<p>Hospedado no Hostinger WordPress • Total de Leads: ' . $total . '</p>';
   echo '<table class="wp-list-table widefat fixed striped">';
   echo '<thead><tr><th>Data</th><th>Nome</th><th>WhatsApp</th><th>Objetivo</th><th>Crédito</th><th>Status</th></tr></thead>';
   echo '<tbody>';
-  foreach ($leads as $l) {
-    echo '<tr>';
-    echo '<td>' . $l->created_at . '</td>';
-    echo '<td><strong>' . esc_html($l->name) . '</strong></td>';
-    echo '<td>' . esc_html($l->whatsapp) . '</td>';
-    echo '<td>' . esc_html($l->objective) . '</td>';
-    echo '<td>' . esc_html($l->credit_amount) . '</td>';
-    echo '<td><span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:12px; font-weight:bold;">' . esc_html($l->status) . '</span></td>';
-    echo '</tr>';
+  if ($total > 0) {
+    foreach ($leads as $l) {
+      echo '<tr>';
+      echo '<td>' . esc_html($l->created_at) . '</td>';
+      echo '<td><strong>' . esc_html($l->name) . '</strong></td>';
+      echo '<td>' . esc_html($l->whatsapp) . '</td>';
+      echo '<td>' . esc_html($l->objective) . '</td>';
+      echo '<td>' . esc_html($l->credit_amount) . '</td>';
+      echo '<td><span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:12px; font-weight:bold;">' . esc_html($l->status) . '</span></td>';
+      echo '</tr>';
+    }
+  } else {
+    echo '<tr><td colspan="6" style="text-align:center; padding: 20px;">Nenhum lead capturado ainda.</td></tr>';
   }
   echo '</tbody></table>';
   echo '</div>';
@@ -176,16 +181,16 @@ function 3p_render_crm_page() {
 
 // 3. Endpoint REST API nativo para Webhooks do Instagram Ads no WP Hostinger
 add_action('rest_api_init', function () {
-  register_rest_route('3p/v1', '/instagram-lead', array(
+  register_rest_route('p3/v1', '/instagram-lead', array(
     'methods' => 'POST',
-    'callback' => 'wp_3p_handle_instagram_webhook',
+    'callback' => 'wp_p3_handle_instagram_webhook',
     'permission_callback' => '__return_true'
   ));
 });
 
-function wp_3p_handle_instagram_webhook($request) {
+function wp_p3_handle_instagram_webhook($request) {
   global $wpdb;
-  $table = $wpdb->prefix . '3p_leads';
+  $table = $wpdb->prefix . 'p3_leads';
   $params = $request->get_json_params();
   
   $wpdb->insert($table, array(
