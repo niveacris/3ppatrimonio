@@ -11,7 +11,7 @@ export const WordPressExportModal: React.FC<WordPressExportModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const [activeTab, setActiveTab] = useState<'guide' | 'php_template' | 'wp_plugin' | 'elementor'>('guide');
+  const [activeTab, setActiveTab] = useState<'theme_zip' | 'guide' | 'php_template' | 'wp_plugin' | 'elementor'>('theme_zip');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -257,6 +257,18 @@ function wp_3p_handle_instagram_webhook($request) {
         {/* Tabs */}
         <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
           <button
+            onClick={() => setActiveTab('theme_zip')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'theme_zip'
+                ? 'bg-amber-500 text-slate-950 shadow-md'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <Download className="w-4 h-4" />
+            <span>📦 Baixar Tema WordPress (.ZIP)</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('guide')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'guide'
@@ -277,7 +289,7 @@ function wp_3p_handle_instagram_webhook($request) {
             }`}
           >
             <FileCode className="w-4 h-4" />
-            <span>2. Template WordPress (.php)</span>
+            <span>2. Arquivos PHP do Tema</span>
           </button>
 
           <button
@@ -308,6 +320,73 @@ function wp_3p_handle_instagram_webhook($request) {
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto pr-2 space-y-4">
           
+          {/* TAB 0: TEMA WORDPRESS COMPLETO (.ZIP) */}
+          {activeTab === 'theme_zip' && (
+            <div className="space-y-6 text-xs text-slate-300">
+              <div className="bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/40 p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-2 max-w-xl">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Cópia 100% Idêntica em PHP & WordPress
+                  </div>
+                  <h3 className="text-lg font-black text-white">
+                    Tema Oficial 3P Patrimônio para WordPress
+                  </h3>
+                  <p className="text-slate-300 leading-relaxed">
+                    Pacote completo pronto para upload no painel do WordPress. Contém os arquivos nativos 
+                    <code className="text-amber-400 font-mono mx-1">style.css</code>, 
+                    <code className="text-amber-400 font-mono mx-1">index.php</code>, 
+                    <code className="text-amber-400 font-mono mx-1">header.php</code>, 
+                    <code className="text-amber-400 font-mono mx-1">footer.php</code>, 
+                    <code className="text-amber-400 font-mono mx-1">functions.php</code> e 
+                    <code className="text-amber-400 font-mono mx-1">page-landing.php</code> com todos os assets compilados.
+                  </p>
+                </div>
+                
+                <a
+                  href="/3p-patrimonio-tema-wordpress.zip"
+                  download="3p-patrimonio-tema-wordpress.zip"
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-6 py-3.5 rounded-xl shadow-lg shadow-amber-500/30 transition-all transform hover:scale-105 flex items-center gap-2.5 shrink-0 text-sm"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>Baixar Tema (.ZIP)</span>
+                </a>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+                  <div className="text-amber-400 font-bold text-sm flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-amber-500/20 flex items-center justify-center font-mono text-xs">1</span>
+                    Instalação em 1 Clique
+                  </div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    No painel do WordPress, vá em <strong>Aparência &rarr; Temas &rarr; Adicionar Novo &rarr; Enviar Tema</strong> e selecione o arquivo <code>3p-patrimonio-tema-wordpress.zip</code>.
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+                  <div className="text-amber-400 font-bold text-sm flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-amber-500/20 flex items-center justify-center font-mono text-xs">2</span>
+                    Ativar no WordPress
+                  </div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Clique em <strong>Ativar</strong>. O WordPress passará a exibir o site exatamente como está aqui: design executivo, simulador de cotas e botão WhatsApp.
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+                  <div className="text-amber-400 font-bold text-sm flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-amber-500/20 flex items-center justify-center font-mono text-xs">3</span>
+                    Hostinger Otimizado
+                  </div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Totalmente compatível com LiteSpeed Cache, PHP 8.1 / 8.2 / 8.3 e banco de dados MySQL padrão da Hostinger.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: GUIDE */}
           {activeTab === 'guide' && (
             <div className="space-y-6 text-xs text-slate-300">
