@@ -11,7 +11,7 @@ import logo250 from '../assets/images/logo_250x250.png';
 import logoCompleto250 from '../assets/images/logo_completo_250x250.png';
 import tresPilaresImg from '../assets/images/3pilares_transparente.png';
 import participacaoImg from '../assets/images/participacao_24x24.png';
-import foundersPhoto from '../assets/images/successful_partners_1786049278782.jpg';
+import foundersPhoto from '../assets/images/socios.png';
 
 interface InstagramCanvaModalProps {
   isOpen: boolean;

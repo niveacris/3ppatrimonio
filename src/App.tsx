@@ -22,7 +22,7 @@ import { AccessibilityToolbar } from './components/AccessibilityToolbar';
 import { Lead, LeadStatus } from './types';
 import { MessageSquare, LayoutDashboard, Lock, Globe, Instagram } from 'lucide-react';
 
-import foundersPhotoUrl from './assets/images/successful_partners_1786049278782.jpg';
+import foundersPhotoUrl from './assets/images/socios.png';
 import heroBannerUrl from './assets/images/wealth_planning_hero_1786042869039.jpg';
 
 export default function App() {

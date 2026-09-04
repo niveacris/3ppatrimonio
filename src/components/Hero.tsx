@@ -155,8 +155,8 @@ export const Hero: React.FC<HeroProps> = ({
               <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden relative shadow-xl group flex-1 min-h-[300px]">
                 <img
                   src={foundersPhotoUrl}
-                  alt="Sócios Fundadores da 3P Patrimônio"
-                  className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
+                  alt="Sócios Fundadores da 3P Patrimônio - William, João e Carlos"
+                  className="w-full h-full object-cover object-top transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent flex flex-col justify-end p-6">
