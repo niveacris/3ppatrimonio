@@ -36,6 +36,35 @@ function sanitizeCsvField(field: any): string {
   return `"${str}"`;
 }
 
+// Validation helper for email addresses
+function isValidEmailAddress(emailStr: string): { isValid: boolean; error?: string } {
+  const cleaned = (emailStr || '').trim().toLowerCase();
+  if (!cleaned) return { isValid: false, error: 'E-mail é obrigatório para envio do e-book.' };
+  if (/\s/.test(cleaned)) return { isValid: false, error: 'O e-mail não pode conter espaços.' };
+  
+  const parts = cleaned.split('@');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return { isValid: false, error: 'Formato de e-mail inválido.' };
+  }
+  
+  const domainParts = parts[1].split('.');
+  if (domainParts.length < 2 || domainParts[domainParts.length - 1].length < 2) {
+    return { isValid: false, error: 'Domínio de e-mail inválido.' };
+  }
+
+  const disposable = ['mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'throwawaymail.com', 'yopmail.com', 'sharklasers.com'];
+  if (disposable.includes(parts[1])) {
+    return { isValid: false, error: 'Provedores de e-mail temporários não são permitidos.' };
+  }
+
+  const regex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!regex.test(cleaned)) {
+    return { isValid: false, error: 'Endereço de e-mail com formato inválido.' };
+  }
+
+  return { isValid: true };
+}
+
 // In-memory / file-backed persistent leads store
 const DATA_FILE = path.join(process.cwd(), 'leads_db.json');
 
@@ -181,6 +210,20 @@ app.post("/api/leads", async (req, res) => {
     
     if (!name || !whatsapp || !body.consent) {
       return res.status(400).json({ error: "Campos obrigatórios ausentes (Nome, WhatsApp e Autorização)." });
+    }
+
+    const emailRaw = sanitizeString(body.email, 150);
+    const isEbook = body.objective === 'Download de E-book Patrimonial' || body.utmSource === 'ebook_download';
+
+    if (isEbook && !emailRaw) {
+      return res.status(400).json({ error: "O e-mail é obrigatório para liberar o download do e-book." });
+    }
+
+    if (emailRaw) {
+      const emailValidation = isValidEmailAddress(emailRaw);
+      if (!emailValidation.isValid) {
+        return res.status(400).json({ error: emailValidation.error || "Endereço de e-mail inválido." });
+      }
     }
 
     const newLead: Lead = {

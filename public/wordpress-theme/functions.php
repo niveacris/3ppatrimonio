@@ -230,7 +230,7 @@ function p3_patrimonio_handle_lead($request) {
 
     $name     = sanitize_text_field($params['name'] ?? 'Lead Sem Nome');
     $whatsapp = sanitize_text_field($params['whatsapp'] ?? '');
-    $email    = sanitize_email($params['email'] ?? '');
+    $email    = sanitize_email(trim($params['email'] ?? ''));
     $obj      = sanitize_text_field($params['objective'] ?? 'Consórcio');
     $credit   = sanitize_text_field($params['creditAmount'] ?? ($params['credit_amount'] ?? 'A definir'));
     $parcel   = sanitize_text_field($params['monthlyInstallment'] ?? ($params['monthly_installment'] ?? ''));
@@ -238,6 +238,26 @@ function p3_patrimonio_handle_lead($request) {
 
     if (empty($whatsapp)) {
         return new WP_REST_Response(array('success' => false, 'error' => 'WhatsApp obrigatório'), 400);
+    }
+
+    // Validação estrita de e-mail
+    $is_ebook = ($obj === 'Download de E-book Patrimonial' || ($params['utmSource'] ?? '') === 'ebook_download');
+    if ($is_ebook && (empty($email) || !is_email($email))) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Por favor, informe um endereço de e-mail válido para receber o e-book.'), 400);
+    }
+
+    if (!empty($email) && !is_email($email)) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Formato de e-mail inválido.'), 400);
+    }
+
+    // Bloqueio de domínios descartáveis comuns
+    if (!empty($email)) {
+        $email_parts = explode('@', $email);
+        $domain = end($email_parts);
+        $disposable = array('mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com', 'throwawaymail.com', 'yopmail.com', 'sharklasers.com');
+        if (in_array(strtolower($domain), $disposable, true)) {
+            return new WP_REST_Response(array('success' => false, 'error' => 'Provedores de e-mail temporários não são permitidos para receber o e-book.'), 400);
+        }
     }
 
     $inserted = $wpdb->insert($table, array(
@@ -254,6 +274,15 @@ function p3_patrimonio_handle_lead($request) {
 
     if ($inserted === false) {
         return new WP_REST_Response(array('success' => false, 'error' => $wpdb->last_error), 500);
+    }
+
+    // Se for e-book e houver e-mail válido, tenta disparar notificação/entrega via wp_mail
+    if ($is_ebook && !empty($email) && function_exists('wp_mail')) {
+        $site_name = get_bloginfo('name') ?: '3P Patrimônio';
+        $subject = "Seu E-book 3P Patrimônio: Como Construir Patrimônio Utilizando Consórcios";
+        $home = home_url('/#ebook');
+        $body_mail = "Olá, {$name}!\n\nSeu exemplar exclusivo do e-book oficial 'Como Construir Patrimônio Utilizando Consórcios', de autoria de Carlos Yoshimori, foi liberado com sucesso.\n\nVocê pode acessá-lo e fazer o download do PDF completo no link:\n{$home}\n\nFicamos à disposição para tirar dúvidas e apresentar simulações patrimoniais personalizadas.\n\nAtenciosamente,\nCarlos Yoshimori & Equipe 3P Patrimônio\nWhatsApp: (11) 99687-6748";
+        @wp_mail($email, $subject, $body_mail);
     }
 
     return new WP_REST_Response(array('success' => true, 'message' => 'Lead cadastrado com sucesso no MySQL!'), 200);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Send, CheckCircle2, Shield, Lock, AlertCircle, Phone, MessageSquare, Instagram } from 'lucide-react';
 import { Lead } from '../types';
+import { validateEmail } from '../utils/emailValidator';
 
 interface LeadFormProps {
   preFilledData?: {
@@ -114,6 +115,14 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
     if (!consent) {
       setErrorMsg('É necessário autorizar o contato da 3P Patrimônio para prosseguir.');
       return;
+    }
+
+    if (email.trim()) {
+      const emailCheck = validateEmail(email);
+      if (!emailCheck.isValid) {
+        setErrorMsg(emailCheck.error || 'Por favor, informe um endereço de e-mail válido.');
+        return;
+      }
     }
 
     setLoading(true);

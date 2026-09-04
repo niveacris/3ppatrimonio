@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { BookOpen, Download, CheckCircle2, Shield, Lock, ArrowRight, FileText, Sparkles, Send, Eye, X, Award, ChevronRight, ChevronLeft, User, Phone, Mail, Check } from 'lucide-react';
+import { BookOpen, Download, CheckCircle2, Shield, Lock, ArrowRight, FileText, Sparkles, Send, Eye, X, Award, ChevronRight, ChevronLeft, User, Phone, Mail, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Lead } from '../types';
 import { EBOOK_META, EBOOK_CHAPTERS, EbookChapter } from '../data/ebookContent';
 import { generateEbookPdf } from '../utils/generateEbookPdf';
+import { validateEmail, EmailValidationResult } from '../utils/emailValidator';
 
 interface EbookDownloadProps {
   onSuccess?: (newLead: Lead) => void;
@@ -12,6 +13,8 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -19,20 +22,37 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
+  const emailValidation = validateEmail(email);
+
+  const handleApplySuggestion = (suggested: string) => {
+    setEmail(suggested);
+    setEmailConfirmed(true);
+    setErrorMsg('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setEmailTouched(true);
 
     if (!name.trim()) {
       setErrorMsg('Por favor, informe seu Nome Completo.');
       return;
     }
     if (!whatsapp.trim() || whatsapp.length < 8) {
-      setErrorMsg('Por favor, informe seu WhatsApp.');
+      setErrorMsg('Por favor, informe seu WhatsApp com DDD.');
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
-      setErrorMsg('Por favor, informe um E-mail válido.');
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.isValid) {
+      setErrorMsg(emailCheck.error || 'Por favor, informe um endereço de e-mail válido.');
+      return;
+    }
+
+    if (emailCheck.suggestion && !emailConfirmed) {
+      setErrorMsg(`Atenção: Você quis dizer "${emailCheck.suggestedEmail}"? Clique no botão de correção abaixo ou clique novamente em Receber E-book para confirmar.`);
+      setEmailConfirmed(true);
       return;
     }
 
@@ -221,12 +241,17 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
                         Seu E-book está liberado
                       </h3>
                       <p className="text-slate-300 text-xs sm:text-sm">
-                        Obrigado, <strong className="text-amber-400">{name}</strong>. O e-book oficial de <strong>Carlos Yoshimori</strong> já está pronto para download em PDF ou leitura online.
+                        Obrigado, <strong className="text-amber-400">{name}</strong>. O e-book oficial de <strong>Carlos Yoshimori</strong> foi liberado e associado ao seu e-mail <strong className="text-emerald-400">{email}</strong>.
                       </p>
                     </div>
 
-                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl text-left text-xs space-y-2 max-w-sm mx-auto">
-                      <div className="text-slate-400 font-bold uppercase text-[10px]">Exemplar Reservado Para:</div>
+                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl text-left text-xs space-y-2.5 max-w-sm mx-auto">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-bold uppercase text-[10px]">Exemplar Reservado & Validado</span>
+                        <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                          <Check className="w-3 h-3" /> E-mail Verificado
+                        </span>
+                      </div>
                       <div className="text-white truncate"><strong>Nome:</strong> {name}</div>
                       <div className="text-white truncate"><strong>E-mail:</strong> {email}</div>
                       <div className="text-white truncate"><strong>WhatsApp:</strong> {whatsapp}</div>
@@ -318,22 +343,87 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
                       </div>
                     </div>
 
-                    {/* Field: E-mail */}
-                    <div className="space-y-1">
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                        E-mail <span className="text-amber-400">*</span>
-                      </label>
+                    {/* Field: E-mail com Validação Avançada */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                          E-mail para Envio do E-book <span className="text-amber-400">*</span>
+                        </label>
+                        {emailTouched && email && emailValidation.isValid && !emailValidation.suggestion && (
+                          <span className="text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> E-mail Válido
+                          </span>
+                        )}
+                      </div>
+
                       <div className="relative">
-                        <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <Mail className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
+                          emailTouched && email
+                            ? emailValidation.isValid
+                              ? 'text-emerald-400'
+                              : 'text-rose-400'
+                            : 'text-slate-500'
+                        }`} />
                         <input
                           type="email"
                           required
                           placeholder="Ex: seu.email@exemplo.com.br"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-colors"
+                          onBlur={() => setEmailTouched(true)}
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            if (!emailTouched && e.target.value.length > 3) {
+                              setEmailTouched(true);
+                            }
+                            if (errorMsg) setErrorMsg('');
+                          }}
+                          className={`w-full bg-slate-900 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all ${
+                            emailTouched && email
+                              ? emailValidation.isDisposable || (!emailValidation.isValid && !emailValidation.suggestion)
+                                ? 'border border-rose-500 focus:border-rose-400 focus:ring-1 focus:ring-rose-500/20'
+                                : emailValidation.suggestion
+                                ? 'border border-amber-500 focus:border-amber-400 focus:ring-1 focus:ring-amber-500/20'
+                                : 'border border-emerald-500/80 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/20'
+                              : 'border border-slate-800 focus:border-amber-500'
+                          }`}
                         />
+                        {emailTouched && email && (
+                          <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                            {emailValidation.isValid && !emailValidation.suggestion ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            ) : emailValidation.suggestion ? (
+                              <AlertTriangle className="w-4 h-4 text-amber-400" />
+                            ) : (
+                              <X className="w-4 h-4 text-rose-400" />
+                            )}
+                          </div>
+                        )}
                       </div>
+
+                      {/* Sugestão Interativa de Correção de Digitação (ex: gmai.com -> gmail.com) */}
+                      {emailTouched && emailValidation.suggestion && emailValidation.suggestedEmail && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-1.5 text-amber-300">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>Você quis dizer <strong>{emailValidation.suggestedEmail}</strong>?</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleApplySuggestion(emailValidation.suggestedEmail!)}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shrink-0"
+                          >
+                            Corrigir
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Mensagem de Erro de Formato ou Provedor Descartável */}
+                      {emailTouched && email && !emailValidation.isValid && (
+                        <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1 pl-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>{emailValidation.error}</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* Submit Button */}
