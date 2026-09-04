@@ -1,35 +1,24 @@
 <?php
 /**
  * Template Name: 3P Patrimônio - Landing Page Oficial
- * Description: Modelo de página de largura total (Full Width) sem interferência de cabeçalho ou rodapé padrão do WordPress.
+ * Description: Modelo de página de largura total (Full Width) para a Landing Page 3P Patrimônio.
  *
  * @package 3p-patrimonio
  */
-?><!DOCTYPE html>
-<html <?php language_attributes(); ?>>
-<head>
-    <meta charset="<?php bloginfo('charset'); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php wp_title('|', true, 'right'); bloginfo('name'); ?> - Consultoria em Consórcios Imobiliários e Auto</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- CSS Compilado do App -->
-    <link rel="stylesheet" href="<?php echo get_template_directory_uri(); ?>/assets/index-BTk7EaV_.css">
-    
-    <?php wp_head(); ?>
-</head>
-<body <?php body_class('bg-slate-950 text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950'); ?>>
-<?php wp_body_open(); ?>
 
-    <!-- Container Idêntico à Aplicação React -->
-    <div id="root"></div>
+get_header(); ?>
 
-    <!-- Script Oficial da Aplicação -->
-    <script type="module" crossorigin src="<?php echo get_template_directory_uri(); ?>/assets/index-BwgTa3RM.js"></script>
+<main id="primary" class="site-main w-full min-h-screen">
+    <!-- Ponto de montagem da aplicação 3P Patrimônio -->
+    <div id="root">
+        <noscript>
+            <div style="padding: 40px; text-align: center; color: #fff; background: #020617; font-family: sans-serif;">
+                <h1>3P PATRIMÔNIO</h1>
+                <p>Para interagir com o simulador e visualizar todos os recursos exclusivos, por favor habilite o JavaScript em seu navegador.</p>
+                <p><a href="https://wa.me/5511996876748" style="color: #f59e0b;">Fale diretamente com um consultor no WhatsApp</a></p>
+            </div>
+        </noscript>
+    </div>
+</main>
 
-<?php wp_footer(); ?>
-</body>
-</html>
+<?php get_footer(); ?>

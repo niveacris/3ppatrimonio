@@ -54,11 +54,57 @@ function p3_register_admin_menu() {
     );
 }
 
+// Handler de exportação CSV para os sócios
+add_action('admin_init', 'p3_handle_export_csv');
+function p3_handle_export_csv() {
+    if (isset($_GET['page']) && $_GET['page'] === 'p3-leads-manager' && isset($_GET['action']) && $_GET['action'] === 'export_csv') {
+        if (!current_user_can('manage_options')) {
+            wp_die('Acesso negado.');
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'p3_leads';
+        $leads = $wpdb->get_results("SELECT * FROM $table_name ORDER BY id DESC");
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=3p_patrimonio_leads_' . date('Y-m-d_His') . '.csv');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        // Adiciona BOM para UTF-8 no Excel
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        fputcsv($output, array('ID', 'Data/Hora', 'Nome', 'WhatsApp', 'E-mail', 'Objetivo', 'Credito Pretendido', 'Parcela Estimada', 'Status', 'Mensagem', 'Notas'));
+
+        if (!empty($leads)) {
+            foreach ($leads as $l) {
+                fputcsv($output, array(
+                    $l->id,
+                    $l->created_at,
+                    $l->name,
+                    $l->whatsapp,
+                    $l->email,
+                    $l->objective,
+                    $l->credit_amount,
+                    $l->monthly_installment,
+                    $l->status,
+                    $l->message,
+                    $l->notes ?? ''
+                ));
+            }
+        }
+        fclose($output);
+        exit;
+    }
+}
+
 function p3_render_crm_page() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'p3_leads';
+    p3_create_leads_table();
     $leads = $wpdb->get_results("SELECT * FROM $table_name ORDER BY id DESC");
     $total = is_array($leads) ? count($leads) : 0;
+    $export_url = admin_url('admin.php?page=p3-leads-manager&action=export_csv');
     
     echo '<div class="wrap" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif;">';
     echo '<div style="background: #020617; padding: 24px; border-radius: 16px; margin-bottom: 24px; border: 1px solid #1e293b; color: #fff;">';
@@ -68,7 +114,10 @@ function p3_render_crm_page() {
     echo '<h1 style="color: #f8fafc; font-size: 24px; font-weight: 800; margin: 8px 0 4px 0;">🏛️ Painel de Movimentação dos Sócios - 3P Patrimônio</h1>';
     echo '<p style="color: #94a3b8; margin: 0; font-size: 13px;">Hospedado na Hostinger • Banco MySQL • Total de Leads: <strong style="color: #fbbf24;">' . $total . '</strong></p>';
     echo '</div>';
+    echo '<div style="display: flex; gap: 12px; align-items: center;">';
+    echo '<a href="' . esc_url($export_url) . '" style="background: #1e293b; color: #f8fafc; border: 1px solid #334155; font-weight: 600; padding: 10px 16px; border-radius: 10px; text-decoration: none; font-size: 13px;">📥 Exportar Planilha CSV</a>';
     echo '<a href="https://wa.me/5511996876748" target="_blank" style="background: #f59e0b; color: #020617; font-weight: bold; padding: 10px 18px; border-radius: 10px; text-decoration: none; font-size: 13px;">WhatsApp Consultoria &rarr;</a>';
+    echo '</div>';
     echo '</div>';
     echo '</div>';
 

@@ -72,7 +72,16 @@ export default function App() {
 
   const fetchLeads = async () => {
     try {
-      const res = await fetch('/api/leads');
+      // Support WordPress REST API (/wp-json/p3/v1/leads) or local /api/leads
+      const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
+      const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
+      const primaryUrl = isWp ? '/wp-json/p3/v1/leads' : '/api/leads';
+      const fallbackUrl = primaryUrl === '/api/leads' ? '/wp-json/p3/v1/leads' : '/api/leads';
+
+      let res = await fetch(primaryUrl);
+      if (!res.ok && res.status === 404) {
+        res = await fetch(fallbackUrl);
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.leads) setLeads(data.leads);
@@ -111,11 +120,23 @@ export default function App() {
 
   const handleUpdateLeadStatus = async (id: string, status: LeadStatus, notes?: string) => {
     try {
-      const res = await fetch(`/api/leads/${id}`, {
+      const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
+      const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
+      const primaryUrl = isWp ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
+      const fallbackUrl = primaryUrl.startsWith('/api') ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
+
+      let res = await fetch(primaryUrl, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, notes })
       });
+      if (!res.ok && res.status === 404) {
+        res = await fetch(fallbackUrl, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, notes })
+        });
+      }
       if (res.ok) {
         fetchLeads();
       }
@@ -126,7 +147,15 @@ export default function App() {
 
   const handleDeleteLead = async (id: string) => {
     try {
-      const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+      const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
+      const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
+      const primaryUrl = isWp ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
+      const fallbackUrl = primaryUrl.startsWith('/api') ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
+
+      let res = await fetch(primaryUrl, { method: 'DELETE' });
+      if (!res.ok && res.status === 404) {
+        res = await fetch(fallbackUrl, { method: 'DELETE' });
+      }
       if (res.ok) {
         setLeads((prev) => prev.filter((l) => l.id !== id));
       }

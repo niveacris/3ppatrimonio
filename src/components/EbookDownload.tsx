@@ -39,24 +39,47 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          whatsapp: whatsapp.trim(),
-          email: email.trim(),
-          objective: 'Download de E-book Patrimonial',
-          creditAmount: 'A definir',
-          monthlyInstallment: 'A definir',
-          timeFrame: 'Planejamento de Longo Prazo',
-          hasBiddingFunds: 'Não informado',
-          source: 'E-book Gratuito (Carlos Yoshimori)',
-          message: 'Lead realizou o cadastro para download do e-book: "Como Construir Patrimônio Utilizando Consórcios" por Carlos Yoshimori.',
-          consent: true,
-          utmSource: 'ebook_download'
-        })
-      });
+      const payload = {
+        name: name.trim(),
+        whatsapp: whatsapp.trim(),
+        email: email.trim(),
+        objective: 'Download de E-book Patrimonial',
+        creditAmount: 'A definir',
+        monthlyInstallment: 'A definir',
+        timeFrame: 'Planejamento de Longo Prazo',
+        hasBiddingFunds: 'Não informado',
+        source: 'E-book Gratuito (Carlos Yoshimori)',
+        message: 'Lead realizou o cadastro para download do e-book: "Como Construir Patrimônio Utilizando Consórcios" por Carlos Yoshimori.',
+        consent: true,
+        utmSource: 'ebook_download'
+      };
+
+      const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
+      const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
+      const primaryUrl = p3Data?.api_url || (isWp ? '/wp-json/p3/v1/lead' : '/api/leads');
+      const fallbackUrl = primaryUrl === '/api/leads' ? '/wp-json/p3/v1/lead' : '/api/leads';
+
+      let response: Response;
+      try {
+        response = await fetch(primaryUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (response.status === 404) {
+          response = await fetch(fallbackUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+      } catch (eNet) {
+        response = await fetch(fallbackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
 
       const data = await response.json();
 

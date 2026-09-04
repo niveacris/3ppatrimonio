@@ -51,7 +51,7 @@ get_header(); ?>
     <?php
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['wp_3p_submit'])) {
       global $wpdb;
-      $table_name = $wpdb->prefix . '3p_leads';
+      $table_name = $wpdb->prefix . 'p3_leads';
       
       $name = sanitize_text_field($_POST['name']);
       $whatsapp = sanitize_text_field($_POST['whatsapp']);

@@ -123,30 +123,57 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
         ? `[Perfil Instagram: @${instagramUser.replace('@', '')}] ${message}`
         : message;
 
-      const response = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          whatsapp,
-          email,
-          objective,
-          creditAmount,
-          monthlyInstallment,
-          timeFrame,
-          hasBiddingFunds,
-          source,
-          message: formattedMessage,
-          consent,
-          utmSource: new URLSearchParams(window.location.search).get('utm_source') || (isInstagramVisitor ? 'instagram' : 'direct'),
-          utmMedium: new URLSearchParams(window.location.search).get('utm_medium') || 'web',
-          utmCampaign: new URLSearchParams(window.location.search).get('utm_campaign') || 'landing_page'
-        })
-      });
+      const payload = {
+        name,
+        whatsapp,
+        email,
+        objective,
+        creditAmount,
+        monthlyInstallment,
+        timeFrame,
+        hasBiddingFunds,
+        source,
+        message: formattedMessage,
+        consent,
+        utmSource: new URLSearchParams(window.location.search).get('utm_source') || (isInstagramVisitor ? 'instagram' : 'direct'),
+        utmMedium: new URLSearchParams(window.location.search).get('utm_medium') || 'web',
+        utmCampaign: new URLSearchParams(window.location.search).get('utm_campaign') || 'landing_page'
+      };
+
+      // Detect WordPress REST API endpoint (Hostinger) vs Express local server
+      const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
+      const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
+      const primaryUrl = p3Data?.api_url || (isWp ? '/wp-json/p3/v1/lead' : '/api/leads');
+      const fallbackUrl = primaryUrl === '/api/leads' ? '/wp-json/p3/v1/lead' : '/api/leads';
+
+      let response: Response;
+      try {
+        response = await fetch(primaryUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.status === 404) {
+          // If primary 404s (e.g. running in WordPress without /api/leads), try fallback
+          response = await fetch(fallbackUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+      } catch (errNet) {
+        // Network retry on fallback
+        response = await fetch(fallbackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (response.ok && (data.success || data.id)) {
         setSubmitted(true);
         const createdLead: Lead = {
           id: data.leadId || `lead-${Date.now()}`,
