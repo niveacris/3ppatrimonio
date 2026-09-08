@@ -151,34 +151,14 @@ export const Hero: React.FC<HeroProps> = ({
 
             {/* Right Media Bento Tile (Span 4) */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
-              {/* Media Bento 1: Founders */}
+              {/* Media Bento 1: Screenshot Image */}
               <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden relative shadow-xl group flex-1 min-h-[300px]">
                 <img
                   src={foundersPhotoUrl}
-                  alt="Sócios Fundadores da 3P Patrimônio - William, João e Carlos"
+                  alt="3P Patrimônio - Planejamento Patrimonial"
                   className="w-full h-full object-cover object-top transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent flex flex-col justify-end p-6">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Users className="w-4 h-4 text-amber-400" />
-                    <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest">3P Patrimônio</span>
-                  </div>
-                  <h3 className="font-bold leading-snug" style={{ color: '#dc930d', fontSize: '14px' }}>
-                    Três sócios. Um propósito em comum.
-                  </h3>
-                  <p className="text-xs mt-1" style={{ color: '#f5f1ec' }}>
-                    Atendimento humano e estratégias sob medida para alavancar seu patrimônio.
-                  </p>
-                  
-                  <button
-                    onClick={() => setShowVideoScriptModal(true)}
-                    className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-amber-300 hover:text-white bg-slate-950/90 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-xl w-fit transition-all"
-                  >
-                    <Play className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                    <span>Ver apresentação dos sócios</span>
-                  </button>
-                </div>
               </div>
 
               {/* Media Bento 2: Property Icon Box */}
