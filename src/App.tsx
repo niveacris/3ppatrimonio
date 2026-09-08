@@ -24,7 +24,7 @@ import { RevealedSectionWrapper } from './components/RevealedSectionWrapper';
 import { Lead, LeadStatus } from './types';
 import { MessageSquare, LayoutDashboard, Lock, Globe, Instagram } from 'lucide-react';
 
-import foundersPhotoUrl from './assets/images/socios.png';
+import foundersPhotoUrl from './assets/images/screenshot.png';
 import heroBannerUrl from './assets/images/wealth_planning_hero_1786042869039.jpg';
 
 export default function App() {
