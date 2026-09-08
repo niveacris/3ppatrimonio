@@ -152,11 +152,11 @@ export const Hero: React.FC<HeroProps> = ({
             {/* Right Media Bento Tile (Span 4) */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
               {/* Media Bento 1: Screenshot Image */}
-              <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden relative shadow-xl group flex-1 min-h-[300px]">
+              <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden relative shadow-xl group flex-1 min-h-[300px] flex items-center justify-center">
                 <img
                   src={foundersPhotoUrl}
                   alt="3P Patrimônio - Planejamento Patrimonial"
-                  className="w-full h-full object-cover object-top transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
+                  className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
                   referrerPolicy="no-referrer"
                 />
               </div>
