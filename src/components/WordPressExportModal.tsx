@@ -562,18 +562,105 @@ function wp_p3_handle_instagram_webhook($request) {
           {/* TAB 4: ELEMENTOR */}
           {activeTab === 'elementor' && (
             <div className="space-y-4 text-xs text-slate-300">
-              <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-3">
-                <h4 className="text-sm font-extrabold text-amber-400">Como usar no Elementor / Elementor Pro</h4>
-                <p className="text-slate-400">
-                  Se você utiliza o construtor Elementor no seu WordPress do Hostinger:
+              <div className="bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/30 p-5 rounded-2xl space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Integração Total com Elementor</span>
+                <h4 className="text-base font-extrabold text-white">Como Editar e Atualizar o Site com o Elementor no WordPress</h4>
+                <p className="text-slate-300 leading-relaxed">
+                  O tema 3P Patrimônio foi configurado com suporte nativo ao <strong>Elementor</strong> e <strong>Elementor Pro</strong>. Ele inclui os templates de largura total e canvas, suporta a função <code className="text-amber-400 bg-slate-950 px-1.5 py-0.5 rounded font-mono">the_content()</code> e disponibiliza <strong>Shortcodes Oficiais</strong> para você posicionar qualquer bloco interativo facilmente.
                 </p>
-                <ol className="list-decimal list-inside space-y-2 text-slate-300">
-                  <li>No Elementor, crie uma nova página e defina o Modelo de Página como **Elementor Largura Total** ou **Canvas**.</li>
-                  <li>Adicione um widget de **HTML Personalizado**.</li>
-                  <li>Cole o código gerado no arquivo do template para renderizar toda a estética Bento Grid da 3P Patrimônio.</li>
-                  <li>Para o formulário de captação, conecte o Webhook do Elementor Forms apontando para a API do seu servidor Hostinger.</li>
-                </ol>
               </div>
+
+              {/* Grid de 3 Métodos de Edição no Elementor */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+                  <span className="text-amber-400 font-bold text-xs">MÉTODO 1</span>
+                  <h5 className="font-bold text-white text-sm">Editar Qualquer Página</h5>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    No painel do WordPress, vá em <strong>Páginas &rarr; Adicionar Nova</strong> (ou selecione uma existente), escolha o modelo <em>"3P Patrimônio - Elementor Largura Total"</em> e clique em <strong>"Editar com Elementor"</strong>.
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+                  <span className="text-amber-400 font-bold text-xs">MÉTODO 2</span>
+                  <h5 className="font-bold text-white text-sm">Inserir via Shortcodes</h5>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Arraste o widget de <strong>Shortcode</strong> do Elementor para qualquer coluna ou seção e cole <code className="text-amber-400 font-mono">[p3_app]</code> ou <code className="text-amber-400 font-mono">[p3_whatsapp]</code>.
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+                  <span className="text-amber-400 font-bold text-xs">MÉTODO 3</span>
+                  <h5 className="font-bold text-white text-sm">Formulários Elementor Pro</h5>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Em formulários criados no Elementor Pro, configure a ação <strong>Webhook</strong> apontando para <code className="text-emerald-400 font-mono">/wp-json/p3/v1/lead</code> para alimentar o CRM dos Sócios no MySQL.
+                  </p>
+                </div>
+              </div>
+
+              {/* Tabela de Shortcodes Disponíveis no Elementor */}
+              <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="font-bold text-white text-sm">Shortcodes Oficiais Disponíveis no Elementor</h5>
+                  <span className="text-[10px] text-slate-400">Clique para copiar</span>
+                </div>
+
+                <div className="space-y-2.5 font-mono text-[11px]">
+                  <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+                    <div>
+                      <span className="text-amber-400 font-bold">[p3_app]</span>
+                      <p className="text-slate-400 font-sans text-[11px] mt-0.5">Carrega o aplicativo completo (Simulador, E-book e Análise Patrimonial).</p>
+                    </div>
+                    <button
+                      onClick={() => handleCopy('[p3_app]', 'sc_app')}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-sans transition-colors"
+                    >
+                      {copiedCode === 'sc_app' ? 'Copiado!' : 'Copiar'}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+                    <div>
+                      <span className="text-amber-400 font-bold">[p3_whatsapp text="Falar com Carlos Yoshimori no WhatsApp"]</span>
+                      <p className="text-slate-400 font-sans text-[11px] mt-0.5">Botão de conversão oficial no WhatsApp com estilo premium e mensagem pré-definida.</p>
+                    </div>
+                    <button
+                      onClick={() => handleCopy('[p3_whatsapp text="Falar com Carlos Yoshimori no WhatsApp"]', 'sc_whats')}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-sans transition-colors"
+                    >
+                      {copiedCode === 'sc_whats' ? 'Copiado!' : 'Copiar'}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+                    <div>
+                      <span className="text-amber-400 font-bold">[p3_socios]</span>
+                      <p className="text-slate-400 font-sans text-[11px] mt-0.5">Card de apresentação institucional de Carlos Yoshimori e dos sócios fundadores.</p>
+                    </div>
+                    <button
+                      onClick={() => handleCopy('[p3_socios]', 'sc_socios')}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-sans transition-colors"
+                    >
+                      {copiedCode === 'sc_socios' ? 'Copiado!' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modelos de Página Disponíveis */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+                <h5 className="font-bold text-white text-xs">Modelos de Página Incluídos no Tema:</h5>
+                <ul className="space-y-1.5 text-slate-400 text-[11px]">
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span><strong>3P Patrimônio - Elementor Largura Total (Full Width):</strong> Mantém o cabeçalho e rodapé do tema com área de design livre no Elementor.</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span><strong>3P Patrimônio - Elementor Canvas:</strong> Tela 100% limpa (sem cabeçalho e rodapé), perfeita para criar páginas de captura ou obrigado.</span>
+                  </li>
+                </ul>
+              </div>
+
             </div>
           )}
 

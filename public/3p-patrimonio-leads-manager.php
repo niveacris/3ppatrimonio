@@ -157,20 +157,32 @@ function p3_render_crm_page() {
 // 3. Endpoint REST API nativo para Webhooks de Leads e Instagram Ads no WP Hostinger
 add_action('rest_api_init', function () {
     register_rest_route('p3/v1', '/lead', array(
-        'methods'             => 'POST',
+        'methods'             => array('POST', 'OPTIONS'),
         'callback'            => 'wp_p3_handle_lead_webhook',
         'permission_callback' => '__return_true'
     ));
 
     register_rest_route('p3/v1', '/instagram-lead', array(
-        'methods'             => 'POST',
+        'methods'             => array('POST', 'OPTIONS'),
         'callback'            => 'wp_p3_handle_lead_webhook',
         'permission_callback' => '__return_true'
     ));
 });
 
+// Suporte a CORS para Hostinger no Plugin
+add_action('rest_api_init', function() {
+    remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
+    add_filter('rest_pre_serve_request', function($value) {
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: POST, GET, OPTIONS, PUT, DELETE');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce, X-Requested-With');
+        return $value;
+    });
+}, 15);
+
 function wp_p3_handle_lead_webhook($request) {
     global $wpdb;
+    nocache_headers();
     $table = $wpdb->prefix . 'p3_leads';
     $params = $request->get_json_params();
 
@@ -234,3 +246,27 @@ function wp_p3_handle_lead_webhook($request) {
 
     return new WP_REST_Response(array('success' => true, 'message' => 'Lead salvo com sucesso no MySQL!'), 200);
 }
+
+// Shortcodes para o Elementor (compatível com qualquer tema)
+if (!shortcode_exists('p3_whatsapp')) {
+    add_shortcode('p3_whatsapp', function ($atts) {
+        $a = shortcode_atts(array(
+            'phone'   => '5511996876748',
+            'text'    => 'Falar com Carlos Yoshimori no WhatsApp',
+            'message' => 'Olá Carlos Yoshimori, conheci o 3P Patrimônio e gostaria de conversar sobre estratégia de consórcio.'
+        ), $atts);
+
+        $url = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $a['phone']) . '?text=' . rawurlencode($a['message']);
+        
+        return '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #f59e0b; color: #020617; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; padding: 14px 28px; border-radius: 12px; text-decoration: none; box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.3); transition: all 0.2s ease;">
+            <span style="font-size: 18px;">📱</span> ' . esc_html($a['text']) . ' &rarr;
+        </a>';
+    });
+}
+
+if (!shortcode_exists('p3_app')) {
+    add_shortcode('p3_app', function () {
+        return '<div id="p3-elementor-app-container" class="w-full"><div id="root"></div></div>';
+    });
+}
+

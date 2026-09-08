@@ -20,6 +20,7 @@ import { BrandLogo } from './BrandLogo';
 
 interface FooterProps {
   onOpenForm: () => void;
+  onNavigate?: (href: string) => void;
   onOpenCRM?: () => void;
   onOpenPartnerLogin?: () => void;
   onOpenInstagramStudio?: () => void;
@@ -31,6 +32,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ 
   onOpenForm, 
+  onNavigate,
   onOpenCRM,
   onOpenPartnerLogin,
   onOpenInstagramStudio,
@@ -120,12 +122,36 @@ export const Footer: React.FC<FooterProps> = ({
               >
                 • Termos de Uso
               </button>
-              <a
-                href="#ebook"
+              <button
+                onClick={() => onNavigate ? onNavigate('#como-funciona') : document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-left text-slate-400 hover:text-amber-400 transition-colors"
+              >
+                • Como Funciona
+              </button>
+              <button
+                onClick={() => onNavigate ? onNavigate('#solucoes') : document.getElementById('solucoes')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-left text-slate-400 hover:text-amber-400 transition-colors"
+              >
+                • Soluções Patrimoniais
+              </button>
+              <button
+                onClick={() => onNavigate ? onNavigate('#simulador') : document.getElementById('simulador')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-left text-slate-400 hover:text-amber-400 transition-colors"
+              >
+                • Simulador Interativo
+              </button>
+              <button
+                onClick={() => onNavigate ? onNavigate('#ebook') : document.getElementById('ebook')?.scrollIntoView({ behavior: 'smooth' })}
                 className="text-left text-slate-400 hover:text-amber-400 transition-colors"
               >
                 • E-book Gratuito
-              </a>
+              </button>
+              <button
+                onClick={() => onNavigate ? onNavigate('#duvidas') : document.getElementById('duvidas')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-left text-slate-400 hover:text-amber-400 transition-colors"
+              >
+                • Dúvidas Frequentes
+              </button>
               <button
                 onClick={onOpenForm}
                 className="text-left text-slate-400 hover:text-amber-400 transition-colors"

@@ -19,4 +19,11 @@
     <?php wp_head(); ?>
 </head>
 <body <?php body_class('bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-amber-500 selection:text-slate-950'); ?>>
-<?php wp_body_open(); ?>
+<?php
+wp_body_open();
+
+// Suporte para Elementor Theme Builder (Cabeçalho Customizado)
+if (function_exists('elementor_theme_do_location') && elementor_theme_do_location('header')) {
+    // Renderizado pelo Elementor
+}
+?>

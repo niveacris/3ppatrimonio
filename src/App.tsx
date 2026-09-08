@@ -19,6 +19,8 @@ import { PartnerLoginModal } from './components/PartnerLoginModal';
 import { WordPressExportModal } from './components/WordPressExportModal';
 import { InstagramCanvaModal } from './components/InstagramCanvaModal';
 import { AccessibilityToolbar } from './components/AccessibilityToolbar';
+import { SectionDiscoveryBar } from './components/SectionDiscoveryBar';
+import { RevealedSectionWrapper } from './components/RevealedSectionWrapper';
 import { Lead, LeadStatus } from './types';
 import { MessageSquare, LayoutDashboard, Lock, Globe, Instagram } from 'lucide-react';
 
@@ -32,6 +34,23 @@ export default function App() {
   const [wpExportModalOpen, setWpExportModalOpen] = useState(false);
   const [instagramModalOpen, setInstagramModalOpen] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
+
+  // Progressive section visibility: hide secondary sections until clicked in the menu
+  const [revealedSections, setRevealedSections] = useState<{
+    process: boolean;     // #como-funciona
+    solutions: boolean;   // #solucoes
+    ebook: boolean;       // #ebook
+    simulator: boolean;   // #simulador
+    faq: boolean;         // #duvidas
+  }>({
+    process: false,
+    solutions: false,
+    ebook: false,
+    simulator: false,
+    faq: false,
+  });
+
+  const [showAllSections, setShowAllSections] = useState(false);
   
   const [partnerUser, setPartnerUser] = useState<{ loggedIn: boolean; name: string; email: string } | null>(() => {
     try {
@@ -179,6 +198,75 @@ export default function App() {
     window.open(`https://wa.me/5511996876748?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  // Progressive navigation handler: reveals section on demand and smoothly scrolls
+  const handleNavigate = (href: string) => {
+    const targetId = href.replace('#', '');
+
+    if (targetId === 'como-funciona') {
+      setRevealedSections((prev) => ({ ...prev, process: true }));
+    } else if (targetId === 'solucoes') {
+      setRevealedSections((prev) => ({ ...prev, solutions: true }));
+    } else if (targetId === 'ebook') {
+      setRevealedSections((prev) => ({ ...prev, ebook: true }));
+    } else if (targetId === 'simulador') {
+      setRevealedSections((prev) => ({ ...prev, simulator: true }));
+    } else if (targetId === 'duvidas') {
+      setRevealedSections((prev) => ({ ...prev, faq: true }));
+    }
+
+    setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 80);
+  };
+
+  // Handle URL hash on initial page load if direct link was used
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      handleNavigate(window.location.hash);
+    }
+  }, []);
+
+  const handleToggleSection = (
+    key: 'process' | 'solutions' | 'ebook' | 'simulator' | 'faq',
+    targetId: string
+  ) => {
+    setRevealedSections((prev) => {
+      const nextState = !prev[key];
+      if (nextState) {
+        setTimeout(() => {
+          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+        }, 80);
+      }
+      return { ...prev, [key]: nextState };
+    });
+  };
+
+  const handleToggleAllSections = () => {
+    if (showAllSections) {
+      setShowAllSections(false);
+      setRevealedSections({
+        process: false,
+        solutions: false,
+        ebook: false,
+        simulator: false,
+        faq: false,
+      });
+      document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setShowAllSections(true);
+      setRevealedSections({
+        process: true,
+        solutions: true,
+        ebook: true,
+        simulator: true,
+        faq: true,
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 pb-20 sm:pb-0">
       
@@ -198,11 +286,14 @@ export default function App() {
         onOpenForm={handleScrollToForm}
         onToggleCompactHero={() => setIsCompactHero(!isCompactHero)}
         isCompactHero={isCompactHero}
+        onNavigate={handleNavigate}
+        revealedSections={revealedSections}
+        showAllSections={showAllSections}
       />
 
       {/* Main Content Landmark */}
       <main id="main-content" tabIndex={-1} className="outline-none">
-        {/* 1. Início (Hero) */}
+        {/* 1. Início (Hero) - Always Visible */}
         <Hero
           onOpenForm={handleScrollToForm}
           isCompactHero={isCompactHero}
@@ -210,35 +301,89 @@ export default function App() {
           heroBannerUrl={heroBannerUrl}
         />
 
-        {/* 2. Sobre Nós & Marca */}
+        {/* 2. Sobre Nós & Marca - Always Visible */}
         <AboutUs foundersPhotoUrl={foundersPhotoUrl} />
         <BrandMeaning />
 
-        {/* 3. Como Funciona */}
-        <Process onOpenForm={handleScrollToForm} />
+        {/* Interactive Quick Discovery Bar between essential sections and form */}
+        <SectionDiscoveryBar
+          revealedSections={revealedSections}
+          showAllSections={showAllSections}
+          onToggleSection={handleToggleSection}
+          onToggleAll={handleToggleAllSections}
+          onOpenForm={handleScrollToForm}
+        />
 
-        {/* 4. Soluções & Estratégia Patrimonial */}
-        <Solutions onSelectSolution={handleSelectSolution} />
-        <WealthStrategy onOpenForm={handleScrollToForm} />
-        <MultiQuotaStrategy onOpenForm={handleScrollToForm} />
-        <TargetAudience onOpenForm={handleScrollToForm} />
+        {/* 3. Como Funciona (Revealed on-demand via menu or discovery bar) */}
+        {(showAllSections || revealedSections.process) && (
+          <RevealedSectionWrapper
+            sectionName="Como Funciona"
+            onDismiss={() => setRevealedSections((prev) => ({ ...prev, process: false }))}
+            onScrollToTop={() => document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <Process onOpenForm={handleScrollToForm} />
+          </RevealedSectionWrapper>
+        )}
 
-        {/* 5. Simulador Interativo & E-book Gratuito */}
-        <EbookDownload onSuccess={handleNewLeadCreated} />
-        <Simulator onPreFillForm={handlePreFillFromSimulator} />
+        {/* 4. Soluções & Estratégia Patrimonial (Revealed on-demand via menu or discovery bar) */}
+        {(showAllSections || revealedSections.solutions) && (
+          <RevealedSectionWrapper
+            sectionName="Soluções & Estratégia Patrimonial"
+            onDismiss={() => setRevealedSections((prev) => ({ ...prev, solutions: false }))}
+            onScrollToTop={() => document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <Solutions onSelectSolution={handleSelectSolution} />
+            <WealthStrategy onOpenForm={handleScrollToForm} />
+            <MultiQuotaStrategy onOpenForm={handleScrollToForm} />
+            <TargetAudience onOpenForm={handleScrollToForm} />
+          </RevealedSectionWrapper>
+        )}
 
-        {/* 6. Dúvidas, Formulário & FAQ */}
+        {/* 5. E-book Gratuito (Revealed on-demand via menu or discovery bar) */}
+        {(showAllSections || revealedSections.ebook) && (
+          <RevealedSectionWrapper
+            sectionName="E-book Gratuito"
+            onDismiss={() => setRevealedSections((prev) => ({ ...prev, ebook: false }))}
+            onScrollToTop={() => document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <EbookDownload onSuccess={handleNewLeadCreated} />
+          </RevealedSectionWrapper>
+        )}
+
+        {/* 6. Simulador Interativo (Revealed on-demand via menu or discovery bar) */}
+        {(showAllSections || revealedSections.simulator) && (
+          <RevealedSectionWrapper
+            sectionName="Simulador Interativo"
+            onDismiss={() => setRevealedSections((prev) => ({ ...prev, simulator: false }))}
+            onScrollToTop={() => document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <Simulator onPreFillForm={handlePreFillFromSimulator} />
+          </RevealedSectionWrapper>
+        )}
+
+        {/* 7. Formulário de Análise Personalizada - Always Visible */}
         <LeadForm
           preFilledData={preFilledFormData}
           onSuccess={handleNewLeadCreated}
         />
-        <FAQ />
-        <FinalCTA onOpenForm={handleScrollToForm} />
+
+        {/* 8. Dúvidas Frequentes & FAQ (Revealed on-demand via menu or discovery bar) */}
+        {(showAllSections || revealedSections.faq) && (
+          <RevealedSectionWrapper
+            sectionName="Dúvidas Frequentes & Perguntas"
+            onDismiss={() => setRevealedSections((prev) => ({ ...prev, faq: false }))}
+            onScrollToTop={() => document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <FAQ />
+            <FinalCTA onOpenForm={handleScrollToForm} />
+          </RevealedSectionWrapper>
+        )}
       </main>
 
       {/* Footer Landmark with Administrative Area */}
       <Footer 
         onOpenForm={handleScrollToForm} 
+        onNavigate={handleNavigate}
         onOpenCRM={() => setCrmOpen(true)}
         onOpenPartnerLogin={() => setLoginModalOpen(true)}
         onOpenInstagramStudio={() => setInstagramModalOpen(true)} 

@@ -155,19 +155,24 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
       const primaryUrl = p3Data?.api_url || (isWp ? '/wp-json/p3/v1/lead' : '/api/leads');
       const fallbackUrl = primaryUrl === '/api/leads' ? '/wp-json/p3/v1/lead' : '/api/leads';
 
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (p3Data?.nonce) {
+        reqHeaders['X-WP-Nonce'] = p3Data.nonce;
+      }
+
       let response: Response;
       try {
         response = await fetch(primaryUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: reqHeaders,
           body: JSON.stringify(payload)
         });
 
-        if (response.status === 404) {
+        if (response.status === 404 || !response.ok) {
           // If primary 404s (e.g. running in WordPress without /api/leads), try fallback
           response = await fetch(fallbackUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: reqHeaders,
             body: JSON.stringify(payload)
           });
         }
@@ -175,9 +180,30 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
         // Network retry on fallback
         response = await fetch(fallbackUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: reqHeaders,
           body: JSON.stringify(payload)
         });
+      }
+
+      // If REST API failed and WordPress AJAX is configured, try admin-ajax.php
+      if (!response.ok && p3Data?.ajax_url) {
+        try {
+          const ajaxBody = new URLSearchParams();
+          ajaxBody.append('action', p3Data.ajax_action || 'p3_submit_lead');
+          if (p3Data.ajax_nonce) ajaxBody.append('security', p3Data.ajax_nonce);
+          Object.entries(payload).forEach(([k, v]) => ajaxBody.append(k, String(v)));
+          
+          const ajaxRes = await fetch(p3Data.ajax_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: ajaxBody.toString()
+          });
+          if (ajaxRes.ok) {
+            response = ajaxRes;
+          }
+        } catch {
+          // keep original response
+        }
       }
 
       const data = await response.json();

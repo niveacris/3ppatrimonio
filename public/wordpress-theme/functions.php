@@ -36,6 +36,9 @@ function p3_get_theme_asset($extension, $prefix = 'index') {
 function p3_patrimonio_setup() {
     add_theme_support('title-tag');
     add_theme_support('post-thumbnails');
+    add_theme_support('elementor'); // Suporte oficial completo ao Elementor Page Builder
+    add_theme_support('align-wide');
+    add_theme_support('responsive-embeds');
     add_theme_support('html5', array(
         'search-form',
         'comment-form',
@@ -48,6 +51,14 @@ function p3_patrimonio_setup() {
     add_theme_support('custom-logo');
 }
 add_action('after_setup_theme', 'p3_patrimonio_setup');
+
+/**
+ * Suporte a Elementor Pro Theme Builder e Elementor Header & Footer Builder
+ */
+function p3_patrimonio_register_elementor_locations($elementor_theme_manager) {
+    $elementor_theme_manager->register_all_core_location();
+}
+add_action('elementor/theme/register_locations', 'p3_patrimonio_register_elementor_locations');
 
 /**
  * Criação automática da tabela de leads no MySQL do Hostinger ao ativar o tema
@@ -103,14 +114,17 @@ function p3_patrimonio_scripts() {
         $js_ver = filemtime($theme_dir . $js_rel);
         wp_enqueue_script('p3-main-app', $theme_uri . $js_rel, array(), $js_ver, true);
 
-        // Passa parâmetros do WordPress para o React (URL da REST API e Nonce)
+        // Passa parâmetros do WordPress para o React (URL da REST API, AJAX e Nonce)
         wp_localize_script('p3-main-app', 'P3_DATA', array(
-            'site_url'  => home_url(),
-            'api_url'   => esc_url_raw(rest_url('p3/v1/lead')),
-            'ajax_url'  => admin_url('admin-ajax.php'),
-            'nonce'     => wp_create_nonce('wp_rest'),
-            'whatsapp'  => '5511996876748',
-            'theme_url' => $theme_uri
+            'site_url'    => home_url(),
+            'api_url'     => esc_url_raw(rest_url('p3/v1/lead')),
+            'api_leads'   => esc_url_raw(rest_url('p3/v1/leads')),
+            'ajax_url'    => admin_url('admin-ajax.php'),
+            'ajax_action' => 'p3_submit_lead',
+            'nonce'       => wp_create_nonce('wp_rest'),
+            'ajax_nonce'  => wp_create_nonce('p3_ajax_lead_action'),
+            'whatsapp'    => '5511996876748',
+            'theme_url'   => $theme_uri
         ));
     }
 }
@@ -130,42 +144,88 @@ add_filter('script_loader_tag', 'p3_patrimonio_script_loader_tag', 10, 3);
 /**
  * Endpoint REST API nativo no WordPress para captação direta de leads no Hostinger
  * Rota: /wp-json/p3/v1/lead e /wp-json/p3/v1/leads
+ * Inclui cabeçalhos CORS para suportar acessos www vs não-www no Hostinger
  */
 function p3_patrimonio_register_rest_routes() {
     register_rest_route('p3/v1', '/lead', array(
-        'methods'             => 'POST',
+        'methods'             => array('POST', 'OPTIONS'),
         'callback'            => 'p3_patrimonio_handle_lead',
         'permission_callback' => '__return_true'
     ));
 
     register_rest_route('p3/v1', '/leads', array(
-        'methods'             => 'GET',
+        'methods'             => array('GET', 'OPTIONS'),
         'callback'            => 'p3_patrimonio_get_leads',
         'permission_callback' => '__return_true'
     ));
 
     register_rest_route('p3/v1', '/lead/(?P<id>\d+)', array(
-        'methods'             => array('POST', 'PATCH'),
+        'methods'             => array('POST', 'PATCH', 'OPTIONS'),
         'callback'            => 'p3_patrimonio_update_lead',
         'permission_callback' => '__return_true'
     ));
 
     register_rest_route('p3/v1', '/lead/(?P<id>\d+)', array(
-        'methods'             => 'DELETE',
+        'methods'             => array('DELETE', 'OPTIONS'),
         'callback'            => 'p3_patrimonio_delete_lead',
         'permission_callback' => '__return_true'
     ));
 
     register_rest_route('p3/v1', '/instagram-lead', array(
-        'methods'             => 'POST',
+        'methods'             => array('POST', 'OPTIONS'),
         'callback'            => 'p3_patrimonio_handle_lead',
         'permission_callback' => '__return_true'
     ));
 }
 add_action('rest_api_init', 'p3_patrimonio_register_rest_routes');
 
+/**
+ * Suporte a CORS para Hostinger (evita bloqueios de requisições entre domínios www e sem www)
+ */
+add_action('rest_api_init', function() {
+    remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
+    add_filter('rest_pre_serve_request', function($value) {
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: POST, GET, OPTIONS, PUT, DELETE, PATCH');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce, X-Requested-With');
+        return $value;
+    });
+}, 15);
+
+/**
+ * Fallback via admin-ajax.php para ambientes Hostinger com ModSecurity ou restrição de REST API
+ */
+function p3_ajax_handle_lead() {
+    check_ajax_referer('p3_ajax_lead_action', 'security', false);
+    
+    $payload = array(
+        'name'                => sanitize_text_field($_POST['name'] ?? ''),
+        'whatsapp'            => sanitize_text_field($_POST['whatsapp'] ?? ''),
+        'email'               => sanitize_email($_POST['email'] ?? ''),
+        'objective'           => sanitize_text_field($_POST['objective'] ?? 'Consórcio'),
+        'creditAmount'        => sanitize_text_field($_POST['creditAmount'] ?? ($_POST['credit_amount'] ?? '')),
+        'monthlyInstallment'  => sanitize_text_field($_POST['monthlyInstallment'] ?? ($_POST['monthly_installment'] ?? '')),
+        'message'             => sanitize_textarea_field($_POST['message'] ?? '')
+    );
+    
+    $fake_request = new WP_REST_Request('POST', '/p3/v1/lead');
+    $fake_request->set_body_params($payload);
+    
+    $response = p3_patrimonio_handle_lead($fake_request);
+    $data = $response->get_data();
+    
+    if ($response->get_status() >= 200 && $response->get_status() < 300) {
+        wp_send_json_success($data);
+    } else {
+        wp_send_json_error($data, $response->get_status());
+    }
+}
+add_action('wp_ajax_nopriv_p3_submit_lead', 'p3_ajax_handle_lead');
+add_action('wp_ajax_p3_submit_lead', 'p3_ajax_handle_lead');
+
 function p3_patrimonio_get_leads($request) {
     global $wpdb;
+    nocache_headers();
     p3_patrimonio_ensure_table();
     $table = $wpdb->prefix . 'p3_leads';
     $results = $wpdb->get_results("SELECT * FROM $table ORDER BY id DESC");
@@ -220,6 +280,7 @@ function p3_patrimonio_delete_lead($request) {
 
 function p3_patrimonio_handle_lead($request) {
     global $wpdb;
+    nocache_headers();
     p3_patrimonio_ensure_table();
     $table = $wpdb->prefix . 'p3_leads';
     
@@ -360,15 +421,56 @@ if (!function_exists('p3_register_admin_menu')) {
 }
 
 /**
- * Shortcode [lp_3p_patrimonio] para carregar a landing page dentro de qualquer página/post existente
+ * Shortcodes para uso com o Elementor (Widgets e Blocos)
  */
-function p3_patrimonio_shortcode() {
+
+// 1. Aplicação Completa 3P Patrimônio [p3_app] ou [lp_3p_patrimonio]
+function p3_patrimonio_app_shortcode($atts) {
     ob_start();
     ?>
-    <div id="p3-wordpress-wrapper" class="w-full">
-        <div id="root"></div>
+    <div id="p3-elementor-app-container" class="w-full">
+        <div id="root">
+            <noscript>
+                <div style="padding: 30px; text-align: center; color: #fff; background: #020617;">
+                    <p>Por favor habilite o JavaScript para interagir com os recursos do 3P Patrimônio.</p>
+                </div>
+            </noscript>
+        </div>
     </div>
     <?php
     return ob_get_clean();
 }
-add_shortcode('lp_3p_patrimonio', 'p3_patrimonio_shortcode');
+add_shortcode('p3_app', 'p3_patrimonio_app_shortcode');
+add_shortcode('lp_3p_patrimonio', 'p3_patrimonio_app_shortcode');
+
+// 2. Botão de Conversão WhatsApp Oficial [p3_whatsapp]
+function p3_patrimonio_whatsapp_shortcode($atts) {
+    $a = shortcode_atts(array(
+        'phone'   => '5511996876748',
+        'text'    => 'Falar com Carlos Yoshimori no WhatsApp',
+        'message' => 'Olá Carlos Yoshimori, conheci o 3P Patrimônio e gostaria de conversar sobre estratégia de consórcio.'
+    ), $atts);
+
+    $url = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $a['phone']) . '?text=' . rawurlencode($a['message']);
+    
+    return '<a href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #f59e0b; color: #020617; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; padding: 14px 28px; border-radius: 12px; text-decoration: none; box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.3); transition: all 0.2s ease;">
+        <span style="font-size: 18px;">📱</span> ' . esc_html($a['text']) . ' &rarr;
+    </a>';
+}
+add_shortcode('p3_whatsapp', 'p3_patrimonio_whatsapp_shortcode');
+
+// 3. Card de Apresentação dos Sócios [p3_socios]
+function p3_patrimonio_socios_shortcode($atts) {
+    $img_url = get_template_directory_uri() . '/assets/socios.png';
+    return '<div style="background: #020617; border: 1px solid #1e293b; border-radius: 16px; padding: 24px; max-width: 500px; margin: 20px auto; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <img src="' . esc_url($img_url) . '" alt="Carlos Yoshimori e Sócios" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #f59e0b;" />
+            <div>
+                <span style="color: #fbbf24; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">Consultoria Executiva</span>
+                <h3 style="margin: 4px 0; font-size: 18px; color: #fff;">Carlos Yoshimori</h3>
+                <p style="margin: 0; font-size: 13px; color: #94a3b8;">Especialista em Estruturação Patrimonial via Consórcios de Alto Padrão.</p>
+            </div>
+        </div>
+    </div>';
+}
+add_shortcode('p3_socios', 'p3_patrimonio_socios_shortcode');

@@ -7,30 +7,46 @@ interface HeaderProps {
   onOpenForm: () => void;
   onToggleCompactHero?: () => void;
   isCompactHero?: boolean;
+  onNavigate?: (href: string) => void;
+  revealedSections?: {
+    process: boolean;
+    solutions: boolean;
+    ebook: boolean;
+    simulator: boolean;
+    faq: boolean;
+  };
+  showAllSections?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenForm,
+  onNavigate,
+  revealedSections,
+  showAllSections,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
   const navLinks = [
-    { name: 'Início', href: '#inicio' },
-    { name: 'Sobre nós', href: '#sobre-nos' },
-    { name: 'Como funciona', href: '#como-funciona' },
-    { name: 'Soluções', href: '#solucoes' },
-    { name: 'E-book', href: '#ebook' },
-    { name: 'Simulador', href: '#simulador' },
-    { name: 'Dúvidas', href: '#duvidas' },
+    { name: 'Início', href: '#inicio', isPermanent: true },
+    { name: 'Sobre nós', href: '#sobre-nos', isPermanent: true },
+    { name: 'Como funciona', href: '#como-funciona', key: 'process' as const },
+    { name: 'Soluções', href: '#solucoes', key: 'solutions' as const },
+    { name: 'E-book', href: '#ebook', key: 'ebook' as const },
+    { name: 'Simulador', href: '#simulador', key: 'simulator' as const },
+    { name: 'Dúvidas', href: '#duvidas', key: 'faq' as const },
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     setMobileMenuOpen(false);
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+    if (onNavigate) {
+      onNavigate(href);
+    } else {
+      const element = document.querySelector(href);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
@@ -46,16 +62,22 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
-                className="text-slate-300 hover:text-amber-400 transition-colors duration-150 py-1"
-              >
-                {link.name}
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              const isRevealed = link.key && (showAllSections || revealedSections?.[link.key]);
+              return (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={(e) => handleNavClick(e, link.href)}
+                  className="text-slate-300 hover:text-amber-400 transition-colors duration-150 py-1 flex items-center gap-1.5"
+                >
+                  <span>{link.name}</span>
+                  {isRevealed && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Módulo aberto" />
+                  )}
+                </a>
+              );
+            })}
           </nav>
 
           {/* Right Action Buttons */}
@@ -108,17 +130,27 @@ export const Header: React.FC<HeaderProps> = ({
       {mobileMenuOpen && (
         <div className="lg:hidden mt-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-2xl">
           <nav className="flex flex-col gap-2">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
-                className="text-slate-300 hover:text-amber-400 py-2.5 border-b border-slate-800/80 text-sm font-semibold flex items-center justify-between"
-              >
-                <span>{link.name}</span>
-                <span className="text-xs text-slate-500">→</span>
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              const isRevealed = link.key && (showAllSections || revealedSections?.[link.key]);
+              return (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={(e) => handleNavClick(e, link.href)}
+                  className="text-slate-300 hover:text-amber-400 py-2.5 border-b border-slate-800/80 text-sm font-semibold flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    {link.name}
+                    {isRevealed && (
+                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded font-bold">
+                        Aberto
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-xs text-slate-500">→</span>
+                </a>
+              );
+            })}
           </nav>
 
           <div className="pt-2 flex flex-col gap-2">
