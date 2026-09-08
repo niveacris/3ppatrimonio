@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import logoCompleto250 from '../assets/images/logo_completo_250x250.png';
 import logo250 from '../assets/images/logo_250x250.png';
 import logoCompletoRect from '../assets/images/logo_completo_1024x768.png';
+import { resolveAssetUrl } from '../utils/assets';
 
 interface BrandLogoProps {
   variant?: 'horizontal' | 'badge_3p' | 'full_badge' | 'footer' | 'icon_only';
@@ -32,7 +33,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     ? logoCompleto250 
     : logo250;
   
-  const activeImage = imageUrl || defaultImg;
+  const activeImage = resolveAssetUrl(imageUrl || defaultImg);
 
   // Render image logo if useImage is true and no loading error occurred
   if (useImage && activeImage && !imageError) {

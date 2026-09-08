@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Compass, Landmark, Handshake, Target, ShieldCheck, Sparkles } from 'lucide-react';
 import participacaoImg from '../assets/images/participacao_24x24.png';
+import { resolveAssetUrl } from '../utils/assets';
 
 interface PillarItem {
   title: string;
@@ -51,7 +52,7 @@ export const BrandMeaning: React.FC = () => {
       letter: '2º',
       description: 'Presença constante e orientação contínua nas contemplações e assembleias.',
       icon: Handshake,
-      imageSrc: participacaoImg,
+      imageSrc: resolveAssetUrl(participacaoImg),
       color: 'from-blue-500/20 to-blue-600/5'
     },
     {

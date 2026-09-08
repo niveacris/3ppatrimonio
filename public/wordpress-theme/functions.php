@@ -142,6 +142,45 @@ function p3_patrimonio_script_loader_tag($tag, $handle, $src) {
 add_filter('script_loader_tag', 'p3_patrimonio_script_loader_tag', 10, 3);
 
 /**
+ * Intercepta requisições de /assets/* na raiz e entrega o arquivo diretamente do tema
+ * Resolve 100% o carregamento de imagens e mídias no WordPress / Hostinger
+ */
+function p3_serve_theme_assets() {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    $path = parse_url($uri, PHP_URL_PATH);
+    if ($path && preg_match('#^/assets/(.+\.(png|jpg|jpeg|gif|svg|webp|js|css|woff2?|json))$#i', $path, $matches)) {
+        $file_name = basename($matches[1]);
+        $theme_assets_dir = get_template_directory() . '/assets/';
+        $target_file = $theme_assets_dir . $file_name;
+        
+        // Se o arquivo exato existir na pasta de assets do tema
+        if (file_exists($target_file)) {
+            $ext = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+            $mimes = array(
+                'png'   => 'image/png',
+                'jpg'   => 'image/jpeg',
+                'jpeg'  => 'image/jpeg',
+                'svg'   => 'image/svg+xml',
+                'webp'  => 'image/webp',
+                'gif'   => 'image/gif',
+                'css'   => 'text/css',
+                'js'    => 'application/javascript',
+                'woff2' => 'font/woff2',
+            );
+            $mime = isset($mimes[$ext]) ? $mimes[$ext] : 'application/octet-stream';
+            
+            header('Content-Type: ' . $mime);
+            header('Content-Length: ' . filesize($target_file));
+            header('Cache-Control: public, max-age=31536000');
+            header('Access-Control-Allow-Origin: *');
+            readfile($target_file);
+            exit;
+        }
+    }
+}
+add_action('init', 'p3_serve_theme_assets', 1);
+
+/**
  * Endpoint REST API nativo no WordPress para captação direta de leads no Hostinger
  * Rota: /wp-json/p3/v1/lead e /wp-json/p3/v1/leads
  * Inclui cabeçalhos CORS para suportar acessos www vs não-www no Hostinger

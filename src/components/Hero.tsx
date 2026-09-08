@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, ArrowRight, Play, Users, Building2, Check, Sparkles, Volume2, X, Target, Percent } from 'lucide-react';
 import pilaresTransparente from '../assets/images/3pilares_transparente.png';
+import { resolveAssetUrl } from '../utils/assets';
 
 interface HeroProps {
   onOpenForm: () => void;
@@ -17,6 +18,35 @@ export const Hero: React.FC<HeroProps> = ({
 }) => {
   const [showVideoScriptModal, setShowVideoScriptModal] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  // Resolução dinâmica do asset com lista de fallbacks seguros para WordPress / Hostinger
+  const resolvedInitialImg = resolveAssetUrl(foundersPhotoUrl);
+  const [currentImgSrc, setCurrentImgSrc] = useState(resolvedInitialImg);
+  const [imgAttempt, setImgAttempt] = useState(0);
+
+  useEffect(() => {
+    setCurrentImgSrc(resolveAssetUrl(foundersPhotoUrl));
+    setImgAttempt(0);
+  }, [foundersPhotoUrl]);
+
+  const handleImageError = () => {
+    const fallbacks = [
+      resolvedInitialImg,
+      resolveAssetUrl('/assets/screenshot-BMGL8Qxd.png'),
+      resolveAssetUrl('/assets/screenshot.png'),
+      resolveAssetUrl('/screenshot.png'),
+      '/assets/screenshot-BMGL8Qxd.png',
+      '/assets/screenshot.png',
+      '/screenshot.png',
+      'screenshot.png'
+    ];
+
+    const nextAttempt = imgAttempt + 1;
+    if (nextAttempt < fallbacks.length) {
+      setImgAttempt(nextAttempt);
+      setCurrentImgSrc(fallbacks[nextAttempt]);
+    }
+  };
 
   const videoScriptText = `Olá! Nós somos a 3P Patrimônio. Atuamos com consultoria e intermediação de consórcios para pessoas, famílias, profissionais e investidores que desejam planejar a aquisição de imóveis, veículos ou estruturar a construção de patrimônio.\n\nNosso atendimento começa pela compreensão dos seus objetivos. Antes de apresentar créditos ou parcelas, analisamos seu momento, o prazo disponível e sua capacidade financeira.\n\nPreencha o formulário ou fale com nossa equipe pelo WhatsApp para receber uma análise personalizada 100% gratuita e sem compromisso.`;
 
@@ -76,7 +106,7 @@ export const Hero: React.FC<HeroProps> = ({
 
             <div className="col-span-12 lg:col-span-4 bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 relative shadow-xl group min-h-[280px]">
               <img
-                src={heroBannerUrl}
+                src={resolveAssetUrl(heroBannerUrl)}
                 alt="Patrimônio e Imóveis de Alto Padrão"
                 className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 absolute inset-0"
                 referrerPolicy="no-referrer"
@@ -152,11 +182,13 @@ export const Hero: React.FC<HeroProps> = ({
             {/* Right Media Bento Tile (Span 4) */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
               {/* Media Bento 1: Screenshot Image */}
-              <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden relative shadow-xl group flex-1 min-h-[300px] flex items-center justify-center">
+              <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden relative shadow-xl group flex-1 min-h-[340px] lg:min-h-[380px] flex items-center justify-center">
                 <img
-                  src={foundersPhotoUrl}
+                  src={currentImgSrc}
                   alt="3P Patrimônio - Planejamento Patrimonial"
-                  className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
+                  className="w-full h-full min-h-[340px] object-cover object-center transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
+                  onError={handleImageError}
+                  loading="eager"
                   referrerPolicy="no-referrer"
                 />
               </div>
