@@ -199,14 +199,14 @@ export const PartnerDashboardSection: React.FC<PartnerDashboardSectionProps> = (
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
-                    Área Exclusiva dos Sócios
+                    {partnerUser.email?.toLowerCase().includes('socios') ? 'Administrador Geral' : 'Área dos Sócios'}
                   </span>
                   <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
                     Painel de Gestão & Divisão de Leads 3P
                   </h2>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Conectado como <strong className="text-amber-400">{partnerUser.name}</strong> ({partnerUser.email}) • Distribuição uniforme 1/3 entre os sócios
+                  Conectado como <strong className="text-amber-400">{partnerUser.name}</strong> ({partnerUser.email}) • {partnerUser.email?.toLowerCase().includes('socios') ? 'Acesso administrativo consolidado com controle global' : 'Distribuição uniforme 1/3 entre os sócios'}
                 </p>
               </div>
             </div>

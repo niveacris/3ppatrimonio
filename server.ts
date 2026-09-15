@@ -274,6 +274,14 @@ function getDefaultPartnerAccounts(): Record<string, ServerPartnerAccount> {
       password: INITIAL_DEFAULT_PASSWORD,
       mustChangePassword: true
     },
+    "socios@3ppatrimonio.com.br": {
+      id: "socios_admin",
+      email: "socios@3ppatrimonio.com.br",
+      name: "Sócios 3P (Administrador)",
+      phone: "5511996876748",
+      password: INITIAL_DEFAULT_PASSWORD,
+      mustChangePassword: true
+    },
     "niveacristinas@gmail.com": {
       id: "nivea",
       email: "niveacristinas@gmail.com",
@@ -500,6 +508,7 @@ function findServerPartnerAccount(email: string): ServerPartnerAccount | undefin
   if (!email) return undefined;
   const clean = email.trim().toLowerCase();
   if (partnerAccounts[clean]) return partnerAccounts[clean];
+  if (clean === 'socios@3ppatrimonio.com.br' || clean === 'socios' || clean.startsWith('socios@')) return partnerAccounts['socios@3ppatrimonio.com.br'];
   if (clean.includes('william')) return partnerAccounts['william@3ppatrimonio.com.br'];
   if (clean.includes('carlos')) return partnerAccounts['carlos@3ppatrimonio.com.br'];
   if (clean.includes('joao') || clean.includes('joão')) return partnerAccounts['joao@3ppatrimonio.com.br'];

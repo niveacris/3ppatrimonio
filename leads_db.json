@@ -85,7 +85,7 @@
       "assignedPartnerName": "William Lourenço"
     }
   ],
-  "pageViews": 164,
+  "pageViews": 166,
   "partnerAccounts": {
     "william@3ppatrimonio.com.br": {
       "id": "william",
@@ -107,6 +107,14 @@
       "id": "joao",
       "email": "joao@3ppatrimonio.com.br",
       "name": "João Silva",
+      "phone": "5511996876748",
+      "password": "3P@socios",
+      "mustChangePassword": true
+    },
+    "socios@3ppatrimonio.com.br": {
+      "id": "socios_admin",
+      "email": "socios@3ppatrimonio.com.br",
+      "name": "Sócios 3P (Administrador)",
       "phone": "5511996876748",
       "password": "3P@socios",
       "mustChangePassword": true

@@ -38,6 +38,18 @@ function createInitialAccounts(): Record<string, PartnerAccount> {
     };
   });
 
+  // Conta Administradora dos Sócios 3P (Admin Geral)
+  accounts['socios@3ppatrimonio.com.br'] = {
+    id: 'socios_admin',
+    email: 'socios@3ppatrimonio.com.br',
+    name: 'Sócios 3P (Administrador)',
+    phone: '5511996876748',
+    password: INITIAL_DEFAULT_PASSWORD,
+    mustChangePassword: true,
+    passwordChangedAt: null,
+    lastLoginAt: null
+  };
+
   // Conta de Gestão Nívea Cristina
   accounts['niveacristinas@gmail.com'] = {
     id: 'nivea',
@@ -123,6 +135,7 @@ export function findPartnerAccount(email: string): PartnerAccount | undefined {
   if (accounts[clean]) return accounts[clean];
 
   // Busca por correspondência no prefixo de nome
+  if (clean === 'socios@3ppatrimonio.com.br' || clean === 'socios' || clean.startsWith('socios@')) return accounts['socios@3ppatrimonio.com.br'];
   if (clean.includes('william')) return accounts['william@3ppatrimonio.com.br'];
   if (clean.includes('carlos')) return accounts['carlos@3ppatrimonio.com.br'];
   if (clean.includes('joao') || clean.includes('joão')) return accounts['joao@3ppatrimonio.com.br'];

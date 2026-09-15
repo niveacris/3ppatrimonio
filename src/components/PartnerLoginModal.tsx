@@ -61,6 +61,14 @@ export const PartnerLoginModal: React.FC<PartnerLoginModalProps> = ({
 
   const handleSelectPartner = (pId: string) => {
     setSelectedPartnerId(pId);
+    if (pId === 'socios_admin') {
+      setEmail('socios@3ppatrimonio.com.br');
+      setRecoveryEmail('socios@3ppatrimonio.com.br');
+      setPassword(INITIAL_DEFAULT_PASSWORD);
+      setErrorMsg('');
+      setSuccessMsg('');
+      return;
+    }
     const p = PARTNERS.find(item => item.id === pId);
     if (p) {
       setEmail(p.email);
@@ -389,6 +397,30 @@ export const PartnerLoginModal: React.FC<PartnerLoginModalProps> = ({
                   );
                 })}
               </div>
+
+              {/* Opção de Acesso Admin Geral: socios@3ppatrimonio.com.br */}
+              <button
+                type="button"
+                onClick={() => handleSelectPartner('socios_admin')}
+                className={`w-full py-2 px-3 rounded-xl border transition-all flex items-center justify-between text-xs cursor-pointer ${
+                  selectedPartnerId === 'socios_admin'
+                    ? 'bg-amber-500/15 border-amber-400 text-amber-300 ring-1 ring-amber-500/30 font-bold'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block font-bold leading-tight">Admin Geral dos Sócios</span>
+                    <span className="text-[10px] text-slate-400 font-mono">socios@3ppatrimonio.com.br</span>
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  {selectedPartnerId === 'socios_admin' ? '✓ Selecionado' : 'Conta Admin'}
+                </span>
+              </button>
             </div>
 
             {/* Formulário de Login */}
@@ -651,6 +683,33 @@ export const PartnerLoginModal: React.FC<PartnerLoginModalProps> = ({
                   onChange={(e) => setRecoveryEmail(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-600 outline-none transition-colors font-mono"
                 />
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {PARTNERS.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setRecoveryEmail(p.email)}
+                    className={`text-[10px] px-2 py-0.5 rounded-lg border transition-colors cursor-pointer ${
+                      recoveryEmail.toLowerCase() === p.email.toLowerCase()
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {p.name.split(' ')[0]}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setRecoveryEmail('socios@3ppatrimonio.com.br')}
+                  className={`text-[10px] px-2 py-0.5 rounded-lg border transition-colors cursor-pointer ${
+                    recoveryEmail.toLowerCase() === 'socios@3ppatrimonio.com.br'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
+                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                  }`}
+                >
+                  Admin Sócios
+                </button>
               </div>
             </div>
 

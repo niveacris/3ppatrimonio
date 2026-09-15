@@ -2,6 +2,7 @@ import { Lead, PartnerUser } from '../types';
 import williamPhoto from '../assets/images/william80x80.jpg';
 import carlosPhoto from '../assets/images/carlos80x80.jpg';
 import joaoPhoto from '../assets/images/joao80x80.jpg';
+import logo3p from '../assets/images/logo_250x250.png';
 
 export const PARTNERS: PartnerUser[] = [
   {
@@ -35,6 +36,16 @@ export const PARTNERS: PartnerUser[] = [
 
 export const OFFICIAL_PARTNER_EMAILS = PARTNERS.map(p => p.email);
 
+export const ADMIN_PARTNER: PartnerUser = {
+  id: 'socios_admin',
+  name: 'Sócios 3P (Administrador)',
+  email: 'socios@3ppatrimonio.com.br',
+  role: 'Administrador Geral',
+  phone: '5511996876748',
+  avatar: logo3p,
+  color: '#f59e0b'
+};
+
 /**
  * Retorna os dados do sócio com base no e-mail (ou aproximação)
  */
@@ -42,6 +53,9 @@ export function getPartnerByEmail(email: string): PartnerUser | undefined {
   if (!email) return undefined;
   const clean = email.trim().toLowerCase();
   
+  if (clean.includes('socios') || clean === 'socios@3ppatrimonio.com.br') {
+    return ADMIN_PARTNER;
+  }
   if (clean.includes('william')) {
     return PARTNERS.find(p => p.id === 'william');
   }
