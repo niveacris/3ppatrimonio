@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  Shield, 
-  Phone, 
   Mail, 
   Instagram, 
   MessageSquare, 
-  ExternalLink, 
-  Scale, 
   Lock, 
   LayoutDashboard, 
-  UserCheck, 
   LogOut, 
-  Globe,
-  Sparkles,
-  Layers
+  Globe
 } from 'lucide-react';
 import { PrivacyTermsModal } from './PrivacyTermsModal';
 import { BrandLogo } from './BrandLogo';
@@ -60,7 +53,22 @@ export const Footer: React.FC<FooterProps> = ({
           
           {/* Col 1: Brand Info */}
           <div className="lg:col-span-5 space-y-4">
-            <BrandLogo variant="footer" size="lg" />
+            <a
+              href="#inicio"
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const element = document.getElementById('inicio');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="inline-block group cursor-pointer focus:outline-none"
+              aria-label="3P Patrimônio - Voltar ao topo"
+              title="3P Patrimônio - Voltar ao topo"
+            >
+              <BrandLogo variant="footer" size="lg" />
+            </a>
 
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
               3P Patrimônio Consultoria e intermediação de consórcios para aquisição de bens e planejamento patrimonial inteligente.
@@ -110,6 +118,12 @@ export const Footer: React.FC<FooterProps> = ({
               Navegação e Institucional
             </h4>
             <div className="flex flex-col space-y-2 text-xs">
+              <button
+                onClick={() => onNavigate ? onNavigate('#sobre-nos') : document.getElementById('sobre-nos')?.scrollIntoView({ behavior: 'smooth' })}
+                className="text-left text-slate-400 hover:text-amber-400 transition-colors"
+              >
+                • Quem Somos
+              </button>
               <button
                 onClick={() => setModalType('privacy')}
                 className="text-left text-slate-400 hover:text-white transition-colors"
@@ -163,98 +177,79 @@ export const Footer: React.FC<FooterProps> = ({
 
         </div>
 
-        {/* Administrative & Management Area (Área Administrativa no Rodapé) */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Lock className="w-4 h-4" />
+        {/* Área Administrativa Discreta dos Sócios */}
+        {partnerUser?.loggedIn ? (
+          <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Painel do Sócio:</span>
+                  <span className="text-xs text-amber-400 font-medium">{partnerUser.name}</span>
+                </div>
               </div>
-              <div>
-                <h4 className="text-xs font-extrabold text-white uppercase tracking-wider">
-                  Área Administrativa & Gestão
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Acesso restrito para sócios, consultores e gestão da 3P Patrimônio
-                </p>
-              </div>
+
+              {onLogoutPartner && (
+                <button
+                  onClick={onLogoutPartner}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-300 rounded-lg text-xs transition-colors"
+                  title="Sair da sessão"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sair</span>
+                </button>
+              )}
             </div>
 
-            {partnerUser?.loggedIn && (
-              <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs text-emerald-300 font-bold">
-                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Sócio autenticado: {partnerUser.name}</span>
-                {onLogoutPartner && (
-                  <button
-                    onClick={onLogoutPartner}
-                    className="ml-2 p-1 hover:bg-emerald-500/20 text-slate-400 hover:text-red-400 rounded transition-colors"
-                    title="Desconectar da Área do Sócio"
-                  >
-                    <LogOut className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <button
+                onClick={onOpenCRM}
+                className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 text-slate-200 hover:text-white transition-all text-xs font-bold"
+              >
+                <span className="flex items-center gap-2">
+                  <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Painel CRM</span>
+                </span>
+                <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full font-mono">
+                  {leadCount}
+                </span>
+              </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* 1. Login do Sócio */}
+              <button
+                onClick={onOpenInstagramStudio}
+                className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-pink-500/50 text-slate-200 hover:text-white transition-all text-xs font-bold"
+              >
+                <span className="flex items-center gap-2">
+                  <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Passos para o Instagram</span>
+                </span>
+              </button>
+
+              <button
+                onClick={onOpenWPExport}
+                className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-sky-500/50 text-slate-200 hover:text-white transition-all text-xs font-bold"
+              >
+                <span className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Exportar Hostinger</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end pt-1">
             <button
               onClick={onOpenPartnerLogin}
-              className="flex items-center justify-between gap-2 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-amber-500/50 text-slate-200 hover:text-white transition-all text-xs font-bold group"
+              className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300 transition-colors py-1 px-2.5 rounded-lg hover:bg-slate-900 border border-slate-800/60 hover:border-slate-700"
+              title="Acesso Restrito aos Sócios"
             >
-              <span className="flex items-center gap-2.5">
-                <Lock className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span>{partnerUser?.loggedIn ? 'Perfil do Sócio' : 'Login dos Sócios'}</span>
-              </span>
-              <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md font-mono">
-                {partnerUser?.loggedIn ? 'Ativo' : 'Acessar'}
-              </span>
-            </button>
-
-            {/* 2. Painel CRM de Leads */}
-            <button
-              onClick={onOpenCRM}
-              className="flex items-center justify-between gap-2 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-amber-500/50 text-slate-200 hover:text-white transition-all text-xs font-bold group"
-            >
-              <span className="flex items-center gap-2.5">
-                <LayoutDashboard className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span>Painel CRM Leads</span>
-              </span>
-              <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full font-mono">
-                {leadCount} leads
-              </span>
-            </button>
-
-            {/* 3. Estúdio Instagram & Canva */}
-            <button
-              onClick={onOpenInstagramStudio}
-              className="flex items-center justify-between gap-2 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-pink-500/50 text-slate-200 hover:text-white transition-all text-xs font-bold group"
-            >
-              <span className="flex items-center gap-2.5">
-                <Instagram className="w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform" />
-                <span>Instagram & Canva</span>
-              </span>
-              <span className="text-[10px] text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-md font-mono">
-                Criativos
-              </span>
-            </button>
-
-            {/* 4. Exportação WordPress & Hostinger */}
-            <button
-              onClick={onOpenWPExport}
-              className="flex items-center justify-between gap-2 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-sky-500/50 text-slate-200 hover:text-white transition-all text-xs font-bold group"
-            >
-              <span className="flex items-center gap-2.5">
-                <Globe className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
-                <span>Exportar Hostinger / WP</span>
-              </span>
-              <span className="text-[10px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md font-mono">
-                Deploy
-              </span>
+              <Lock className="w-3 h-3 text-slate-500" />
+              <span>Login dos Sócios</span>
             </button>
           </div>
-        </div>
+        )}
 
         {/* Legal Disclaimer Notice */}
         <div className="bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl space-y-2 text-xs text-slate-400 leading-relaxed">

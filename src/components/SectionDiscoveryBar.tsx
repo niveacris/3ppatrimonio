@@ -10,11 +10,13 @@ import {
   ChevronUp, 
   Eye, 
   EyeOff,
-  Check
+  Check,
+  Users
 } from 'lucide-react';
 
 interface SectionDiscoveryBarProps {
   revealedSections: {
+    about: boolean;
     process: boolean;
     solutions: boolean;
     ebook: boolean;
@@ -22,7 +24,7 @@ interface SectionDiscoveryBarProps {
     faq: boolean;
   };
   showAllSections: boolean;
-  onToggleSection: (key: 'process' | 'solutions' | 'ebook' | 'simulator' | 'faq', targetId: string) => void;
+  onToggleSection: (key: 'about' | 'process' | 'solutions' | 'ebook' | 'simulator' | 'faq', targetId: string) => void;
   onToggleAll: () => void;
   onOpenForm: () => void;
 }
@@ -34,11 +36,19 @@ export const SectionDiscoveryBar: React.FC<SectionDiscoveryBarProps> = ({
   onToggleAll,
   onOpenForm,
 }) => {
+  const totalModulesCount = 6;
   const activeCount = showAllSections 
-    ? 5 
+    ? totalModulesCount 
     : Object.values(revealedSections).filter(Boolean).length;
 
   const modules = [
+    {
+      key: 'about' as const,
+      id: 'sobre-nos',
+      name: 'Quem Somos',
+      description: 'Propósito dos sócios e os 3 Pilares',
+      icon: Users,
+    },
     {
       key: 'process' as const,
       id: 'como-funciona',
@@ -106,12 +116,12 @@ export const SectionDiscoveryBar: React.FC<SectionDiscoveryBarProps> = ({
             <button
               onClick={onToggleAll}
               className={`text-xs font-bold px-4 py-2.5 rounded-xl border transition-all flex items-center gap-2 ${
-                showAllSections || activeCount === 5
+                showAllSections || activeCount === totalModulesCount
                   ? 'bg-slate-800 hover:bg-slate-700 text-amber-400 border-slate-700'
                   : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
               }`}
             >
-              {showAllSections || activeCount === 5 ? (
+              {showAllSections || activeCount === totalModulesCount ? (
                 <>
                   <EyeOff className="w-4 h-4" />
                   <span>Modo Essencial (Recolher)</span>
@@ -127,7 +137,7 @@ export const SectionDiscoveryBar: React.FC<SectionDiscoveryBarProps> = ({
         </div>
 
         {/* Buttons Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {modules.map((mod) => {
             const isRevealed = showAllSections || revealedSections[mod.key];
             const Icon = mod.icon;

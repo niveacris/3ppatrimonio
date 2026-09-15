@@ -10,6 +10,7 @@ interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   imageUrl?: string;
   useImage?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({
@@ -17,7 +18,8 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   className = '',
   size = 'md',
   imageUrl,
-  useImage = true
+  useImage = true,
+  onClick
 }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -38,7 +40,10 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   // Render image logo if useImage is true and no loading error occurred
   if (useImage && activeImage && !imageError) {
     return (
-      <div className={`inline-flex items-center justify-center shrink-0 ${sizeClasses[size]} ${className}`}>
+      <div
+        onClick={onClick}
+        className={`inline-flex items-center justify-center shrink-0 ${sizeClasses[size]} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      >
         <img
           src={activeImage}
           alt="3P Patrimônio"

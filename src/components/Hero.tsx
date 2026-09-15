@@ -1,54 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ArrowRight, Play, Users, Building2, Check, Sparkles, Volume2, X, Target, Percent } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, ArrowRight, Play, Users, Building2, Check, Sparkles, Volume2, X, Target, Percent, Scale, TrendingUp, Award, CheckCircle2 } from 'lucide-react';
 import pilaresTransparente from '../assets/images/3pilares_transparente.png';
-import { resolveAssetUrl } from '../utils/assets';
 
 interface HeroProps {
   onOpenForm: () => void;
   isCompactHero: boolean;
-  foundersPhotoUrl: string;
-  heroBannerUrl: string;
 }
 
 export const Hero: React.FC<HeroProps> = ({
   onOpenForm,
-  isCompactHero,
-  foundersPhotoUrl,
-  heroBannerUrl
+  isCompactHero
 }) => {
   const [showVideoScriptModal, setShowVideoScriptModal] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
-  // Resolução dinâmica do asset com lista de fallbacks seguros para WordPress / Hostinger
-  const resolvedInitialImg = resolveAssetUrl(foundersPhotoUrl);
-  const [currentImgSrc, setCurrentImgSrc] = useState(resolvedInitialImg);
-  const [imgAttempt, setImgAttempt] = useState(0);
-
-  useEffect(() => {
-    setCurrentImgSrc(resolveAssetUrl(foundersPhotoUrl));
-    setImgAttempt(0);
-  }, [foundersPhotoUrl]);
-
-  const handleImageError = () => {
-    const fallbacks = [
-      resolvedInitialImg,
-      resolveAssetUrl('/assets/screenshot-BMGL8Qxd.png'),
-      resolveAssetUrl('/assets/screenshot.png'),
-      resolveAssetUrl('/screenshot.png'),
-      '/assets/screenshot-BMGL8Qxd.png',
-      '/assets/screenshot.png',
-      '/screenshot.png',
-      'screenshot.png'
-    ];
-
-    const nextAttempt = imgAttempt + 1;
-    if (nextAttempt < fallbacks.length) {
-      setImgAttempt(nextAttempt);
-      setCurrentImgSrc(fallbacks[nextAttempt]);
-    }
-  };
-
   const videoScriptText = `Olá! Nós somos a 3P Patrimônio. Atuamos com consultoria e intermediação de consórcios para pessoas, famílias, profissionais e investidores que desejam planejar a aquisição de imóveis, veículos ou estruturar a construção de patrimônio.\n\nNosso atendimento começa pela compreensão dos seus objetivos. Antes de apresentar créditos ou parcelas, analisamos seu momento, o prazo disponível e sua capacidade financeira.\n\nPreencha o formulário ou fale com nossa equipe pelo WhatsApp para receber uma análise personalizada 100% gratuita e sem compromisso.`;
+
+  // Função para selecionar voz masculina em pt-BR (Google português Brasil masculino, Daniel, Jorge, Antonio, etc.)
+  const selectMaleVoice = (): SpeechSynthesisVoice | null => {
+    if (!('speechSynthesis' in window)) return null;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return null;
+
+    // Filtra vozes em português
+    const ptVoices = voices.filter(v => v.lang.includes('pt-BR') || v.lang.includes('pt_BR') || v.lang.startsWith('pt'));
+
+    // 1. Procura por vozes masculinas conhecidas em pt-BR nos navegadores e SOs
+    const maleKeywords = ['male', 'masculin', 'homem', 'daniel', 'jorge', 'antonio', 'ricardo', 'felipe', 'lucas', 'pedro', 'tiago', 'fabio', 'gabriel'];
+    const maleVoice = ptVoices.find(v => {
+      const name = v.name.toLowerCase();
+      return maleKeywords.some(keyword => name.includes(keyword)) && !name.includes('female') && !name.includes('mulher') && !name.includes('luciana') && !name.includes('maria') && !name.includes('helena') && !name.includes('francisca') && !name.includes('leticia');
+    });
+
+    if (maleVoice) return maleVoice;
+
+    // 2. Se nenhuma tiver o nome explícito masculino, pega a primeira voz pt-BR ou qualquer voz pt
+    return ptVoices[0] || voices[0] || null;
+  };
 
   const handleSpeech = () => {
     if ('speechSynthesis' in window) {
@@ -56,9 +44,20 @@ export const Hero: React.FC<HeroProps> = ({
         window.speechSynthesis.cancel();
         setIsPlayingAudio(false);
       } else {
+        window.speechSynthesis.cancel();
+
         const utterance = new SpeechSynthesisUtterance(videoScriptText);
         utterance.lang = 'pt-BR';
+        // Pitch levemente mais grave (0.85) para conferir timbre masculino natural e firme
+        utterance.pitch = 0.85;
         utterance.rate = 0.95;
+
+        // Atribui voz masculina detectada se disponível
+        const chosenVoice = selectMaleVoice();
+        if (chosenVoice) {
+          utterance.voice = chosenVoice;
+        }
+
         utterance.onend = () => setIsPlayingAudio(false);
         utterance.onerror = () => setIsPlayingAudio(false);
         setIsPlayingAudio(true);
@@ -104,16 +103,32 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
             </div>
 
-            <div className="col-span-12 lg:col-span-4 bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 relative shadow-xl group min-h-[280px]">
-              <img
-                src={resolveAssetUrl(heroBannerUrl)}
-                alt="Patrimônio e Imóveis de Alto Padrão"
-                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 absolute inset-0"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent flex flex-col justify-end p-6">
-                <span className="text-amber-400 font-extrabold text-[10px] uppercase tracking-widest bg-slate-950/80 px-2.5 py-1 rounded-md w-fit mb-2">3P Patrimônio</span>
-                <p className="text-white font-bold text-sm leading-snug">Planejamento financeiro inteligente para imóveis e bens.</p>
+            <div className="col-span-12 lg:col-span-4 bg-gradient-to-br from-[#0a1226] via-slate-900 to-[#030919] rounded-3xl p-6 border border-amber-500/30 relative shadow-xl flex flex-col justify-between min-h-[280px]">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-400 font-extrabold text-[10px] uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md">
+                    Assessoria Exclusiva
+                  </span>
+                  <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center p-1">
+                    <img src={pilaresTransparente} alt="3 Pilares" className="w-7 h-7 object-contain brightness-110" />
+                  </div>
+                </div>
+
+                <h3 className="text-white font-extrabold text-lg leading-snug">
+                  Planejamento Inteligente para Imóveis e Grandes Conquistas
+                </h3>
+
+                <p className="text-slate-300 text-xs leading-relaxed">
+                  Construa e alavanque patrimônio livre de juros bancários, com assessoria jurídica, fiscal e contábil integrada.
+                </p>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-amber-400 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Regulamentado BACEN
+                </span>
+                <span className="text-slate-400">3P Patrimônio</span>
               </div>
             </div>
           </div>
@@ -179,18 +194,75 @@ export const Hero: React.FC<HeroProps> = ({
               </div>
             </div>
 
-            {/* Right Media Bento Tile (Span 4) */}
+            {/* Right Media Bento Tile (Span 4) - Cartão Institucional Executivo (Sem Foto) */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
-              {/* Media Bento 1: Screenshot Image */}
-              <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden relative shadow-xl group flex-1 min-h-[340px] lg:min-h-[380px] flex items-center justify-center">
-                <img
-                  src={currentImgSrc}
-                  alt="3P Patrimônio - Planejamento Patrimonial"
-                  className="w-full h-full min-h-[340px] object-cover object-center transform group-hover:scale-105 transition-transform duration-700 absolute inset-0"
-                  onError={handleImageError}
-                  loading="eager"
-                  referrerPolicy="no-referrer"
-                />
+              {/* Media Bento 1: Inteligência Patrimonial Executiva */}
+              <div className="bg-gradient-to-b from-[#0a152d] via-slate-900 to-[#030919] rounded-3xl border border-amber-500/30 p-6 sm:p-7 relative shadow-2xl flex flex-col justify-between min-h-[340px] lg:min-h-[380px] overflow-hidden group">
+                {/* Brilho âmbar sutil de fundo */}
+                <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="space-y-5 relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-400 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-500/20">
+                      <Award className="w-3.5 h-3.5" />
+                      <span>Inteligência Patrimonial</span>
+                    </div>
+
+                    <div className="w-10 h-10 rounded-xl bg-slate-950/80 border border-amber-500/30 flex items-center justify-center p-1 shadow-inner">
+                      <img src={pilaresTransparente} alt="3 Pilares" className="w-7 h-7 object-contain brightness-110" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black tracking-tight leading-snug" style={{ color: '#b5c2e1' }}>
+                      Os 3 Pilares da sua Estratégia
+                    </h3>
+                    <p className="text-xs mt-1" style={{ color: '#adbed6' }}>
+                      Consultoria especializada para aquisição e formação de ativos sem endividamento bancário.
+                    </p>
+                  </div>
+
+                  {/* 3 Pilares em cartões refinados */}
+                  <div className="space-y-2.5">
+                    <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 flex items-start gap-3 hover:border-amber-500/40 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                        <Scale className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold" style={{ color: '#b6c2e0' }}>1. Segurança Jurídica</h4>
+                        <p className="text-[11px] leading-tight mt-0.5" style={{ color: '#adbed6' }}>Análise regulatória, contratos e garantias sólidas.</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 flex items-start gap-3 hover:border-amber-500/40 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold" style={{ color: '#b5c2e1' }}>2. Otimização Tributária</h4>
+                        <p className="text-[11px] leading-tight mt-0.5" style={{ color: '#adbed6' }}>Estruturação patrimonial e holding eficiente.</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 flex items-start gap-3 hover:border-amber-500/40 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold" style={{ color: '#b5c2e1' }}>3. Engenharia Financeira</h4>
+                        <p className="text-[11px] leading-tight mt-0.5" style={{ color: '#adbed6' }}>Lances estratégicos e alavancagem sem juros.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 sm:mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-[11px] relative z-10">
+                  <span className="flex items-center gap-1.5" style={{ color: '#adbed6' }}>
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    Consórcios auditados pelo BACEN
+                  </span>
+                  <span className="text-amber-400 font-bold">100% Consultivo</span>
+                </div>
               </div>
 
               {/* Media Bento 2: Property Icon Box */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Send, CheckCircle2, Shield, Lock, AlertCircle, Phone, MessageSquare, Instagram } from 'lucide-react';
 import { Lead } from '../types';
 import { validateEmail } from '../utils/emailValidator';
+import { saveLeadToLocalVault, markLeadAsSynced, isEmailRegisteredLocally } from '../utils/leadsStorage';
 
 interface LeadFormProps {
   preFilledData?: {
@@ -10,9 +11,10 @@ interface LeadFormProps {
     objective?: string;
   } | null;
   onSuccess: (newLead: Lead) => void;
+  existingLeads?: Lead[];
 }
 
-export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) => {
+export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess, existingLeads }) => {
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +32,28 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [duplicateEmailWarning, setDuplicateEmailWarning] = useState<string | null>(null);
+
+  // Verifica se o e-mail informado já existe no CRM ou no cofre local
+  const checkIsDuplicateEmail = (emailToCheck: string): boolean => {
+    const clean = emailToCheck.trim().toLowerCase();
+    if (!clean) return false;
+
+    // 1. Verifica na lista de leads em memória
+    if (existingLeads && existingLeads.length > 0) {
+      const inMemory = existingLeads.some(
+        l => (l.email || '').trim().toLowerCase() === clean
+      );
+      if (inMemory) return true;
+    }
+
+    // 2. Verifica no cofre local do navegador
+    if (isEmailRegisteredLocally(clean)) {
+      return true;
+    }
+
+    return false;
+  };
 
   // Apply pre-filled values if coming from simulator or URL search params
   useEffect(() => {
@@ -123,6 +147,14 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
         setErrorMsg(emailCheck.error || 'Por favor, informe um endereço de e-mail válido.');
         return;
       }
+
+      // Verificação de e-mail duplicado prévia
+      if (checkIsDuplicateEmail(email)) {
+        const duplicateNotice = `O e-mail "${email.trim()}" já está cadastrado em nossa base. Para nova análise ou atualização dos seus dados, entre em contato diretamente pelo WhatsApp.`;
+        setDuplicateEmailWarning(duplicateNotice);
+        setErrorMsg(duplicateNotice);
+        return;
+      }
     }
 
     setLoading(true);
@@ -168,8 +200,8 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
           body: JSON.stringify(payload)
         });
 
-        if (response.status === 404 || !response.ok) {
-          // If primary 404s (e.g. running in WordPress without /api/leads), try fallback
+        // Tenta a rota de fallback somente se a rota primária não existir (404)
+        if (response.status === 404) {
           response = await fetch(fallbackUrl, {
             method: 'POST',
             headers: reqHeaders,
@@ -177,7 +209,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
           });
         }
       } catch (errNet) {
-        // Network retry on fallback
+        // Retry na rota secundária caso haja falha pura de rede
         response = await fetch(fallbackUrl, {
           method: 'POST',
           headers: reqHeaders,
@@ -185,8 +217,8 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
         });
       }
 
-      // If REST API failed and WordPress AJAX is configured, try admin-ajax.php
-      if (!response.ok && p3Data?.ajax_url) {
+      // Se falhou por 404 e AJAX estiver configurado no WordPress, tenta admin-ajax.php
+      if (response.status === 404 && p3Data?.ajax_url) {
         try {
           const ajaxBody = new URLSearchParams();
           ajaxBody.append('action', p3Data.ajax_action || 'p3_submit_lead');
@@ -209,9 +241,12 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
       const data = await response.json();
 
       if (response.ok && (data.success || data.id)) {
+        // Grava no cofre local apenas se o envio for aceito e não duplicado
+        const vaultRecord = saveLeadToLocalVault(payload, true, data.leadId || data.id);
+        markLeadAsSynced(vaultRecord.id, data.leadId || data.id);
         setSubmitted(true);
         const createdLead: Lead = {
-          id: data.leadId || `lead-${Date.now()}`,
+          id: data.leadId || data.id || `lead-${Date.now()}`,
           createdAt: new Date().toISOString(),
           name,
           whatsapp,
@@ -228,29 +263,16 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
         };
         onSuccess(createdLead);
       } else {
-        setErrorMsg(data.error || 'Não foi possível enviar suas informações. Tente novamente.');
+        // Mensagem de erro do servidor (ex: 409 Conflito - e-mail duplicado)
+        const errorText = data.error || 'Não foi possível enviar suas informações. Tente novamente.';
+        setErrorMsg(errorText);
+        if (response.status === 409 || errorText.toLowerCase().includes('e-mail')) {
+          setDuplicateEmailWarning(errorText);
+        }
       }
     } catch (err) {
       console.error('Submit lead error:', err);
-      // Fallback local save if server fails
-      const fallbackLead: Lead = {
-        id: `lead-local-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        name,
-        whatsapp,
-        email,
-        objective,
-        creditAmount,
-        monthlyInstallment,
-        timeFrame,
-        hasBiddingFunds,
-        source,
-        message,
-        consent,
-        status: 'Novo'
-      };
-      setSubmitted(true);
-      onSuccess(fallbackLead);
+      setErrorMsg('Instabilidade na conexão ao processar seu cadastro. Por favor, tente novamente em instantes ou fale diretamente conosco pelo WhatsApp.');
     } finally {
       setLoading(false);
     }
@@ -396,16 +418,61 @@ export const LeadForm: React.FC<LeadFormProps> = ({ preFilledData, onSuccess }) 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-200 mb-1.5">
-                      E-mail <span className="text-slate-400 font-normal">(opcional)</span>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-200 mb-1.5 flex items-center justify-between">
+                      <span>E-mail <span className="text-slate-400 font-normal">(opcional)</span></span>
+                      {duplicateEmailWarning && (
+                        <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Já cadastrado</span>
+                      )}
                     </label>
                     <input
                       type="email"
                       placeholder="seu.email@exemplo.com.br"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-colors"
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (duplicateEmailWarning) {
+                          setDuplicateEmailWarning(null);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (email.trim()) {
+                          const check = validateEmail(email);
+                          if (check.isValid && checkIsDuplicateEmail(email)) {
+                            setDuplicateEmailWarning(`O e-mail "${email.trim()}" já está registrado em nossa base.`);
+                          } else {
+                            setDuplicateEmailWarning(null);
+                          }
+                        } else {
+                          setDuplicateEmailWarning(null);
+                        }
+                      }}
+                      className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 outline-none transition-colors ${
+                        duplicateEmailWarning
+                          ? 'border-amber-500/80 focus:border-amber-400'
+                          : 'border-slate-800 focus:border-amber-500'
+                      }`}
                     />
+                    {duplicateEmailWarning && (
+                      <div className="mt-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1.5">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <p className="font-semibold text-[11px] leading-relaxed">
+                            {duplicateEmailWarning} Para nova análise ou atendimento de cadastro existente, fale com nossos consultores:
+                          </p>
+                        </div>
+                        <div className="pl-6">
+                          <a
+                            href="https://wa.me/5511978255959?text=Ol%C3%A1!%20Meu%20e-mail%20j%C3%A1%20est%C3%A1%20cadastrado%20na%203P%20Patrim%C3%B4nio%20e%20gostaria%20de%20dar%20continuidade%20ao%20meu%20atendimento."
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-bold text-[11px] bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Continuar atendimento no WhatsApp →</span>
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>

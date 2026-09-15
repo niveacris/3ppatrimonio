@@ -19,6 +19,18 @@ export interface Lead {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+  assignedTo?: string; // 'william@3ppatrimonio.com.br' | 'carlos@3ppatrimonio.com.br' | 'joao@3ppatrimonio.com.br'
+  assignedPartnerName?: string; // 'William Lourenço' | 'Carlos Yoshimori' | 'João Silva'
+}
+
+export interface PartnerUser {
+  id: 'william' | 'carlos' | 'joao' | string;
+  name: string;
+  email: string;
+  role: string;
+  phone: string;
+  avatar: string;
+  color: string;
 }
 
 export interface WebhookConfig {

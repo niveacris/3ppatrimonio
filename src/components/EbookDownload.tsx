@@ -4,6 +4,7 @@ import { Lead } from '../types';
 import { EBOOK_META, EBOOK_CHAPTERS, EbookChapter } from '../data/ebookContent';
 import { generateEbookPdf } from '../utils/generateEbookPdf';
 import { validateEmail, EmailValidationResult } from '../utils/emailValidator';
+import { saveLeadToLocalVault, markLeadAsSynced } from '../utils/leadsStorage';
 
 interface EbookDownloadProps {
   onSuccess?: (newLead: Lead) => void;
@@ -74,6 +75,9 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
         utmSource: 'ebook_download'
       };
 
+      // 1. Gravação imediata no cofre local do navegador (garantia de retenção offline/online)
+      const vaultRecord = saveLeadToLocalVault(payload, false);
+
       const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
       const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
       const primaryUrl = p3Data?.api_url || (isWp ? '/wp-json/p3/v1/lead' : '/api/leads');
@@ -129,8 +133,12 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
 
       const data = await response.json();
 
+      if (response.ok && (data.success || data.id || data.leadId)) {
+        markLeadAsSynced(vaultRecord.id, data.leadId || data.id);
+      }
+
       const newLead: Lead = {
-        id: (data && data.leadId) || `lead-ebook-${Date.now()}`,
+        id: (data && (data.leadId || data.id)) || `lead-ebook-${Date.now()}`,
         createdAt: new Date().toISOString(),
         name: name.trim(),
         whatsapp: whatsapp.trim(),
@@ -146,7 +154,7 @@ export const EbookDownload: React.FC<EbookDownloadProps> = ({ onSuccess }) => {
         status: 'Novo'
       };
 
-      if (onSuccess) {
+      if (onSuccess && !data?.alreadyRegistered) {
         onSuccess(newLead);
       }
 

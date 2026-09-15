@@ -21,11 +21,12 @@ import { InstagramCanvaModal } from './components/InstagramCanvaModal';
 import { AccessibilityToolbar } from './components/AccessibilityToolbar';
 import { SectionDiscoveryBar } from './components/SectionDiscoveryBar';
 import { RevealedSectionWrapper } from './components/RevealedSectionWrapper';
+import { PartnerDashboardSection } from './components/PartnerDashboardSection';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Lead, LeadStatus } from './types';
 import { MessageSquare, LayoutDashboard, Lock, Globe, Instagram } from 'lucide-react';
-
-import foundersPhotoUrl from './assets/images/screenshot.png';
-import heroBannerUrl from './assets/images/wealth_planning_hero_1786042869039.jpg';
+import { syncPendingVaultLeads, getLocalVaultLeads, saveLeadStatusOverride, getLeadStatusOverrides, removeLeadFromLocalVault } from './utils/leadsStorage';
+import { distributeLeadsUniformly, getNextPartnerForLead } from './utils/partnerConfig';
 
 export default function App() {
   const [isCompactHero, setIsCompactHero] = useState(false);
@@ -37,12 +38,14 @@ export default function App() {
 
   // Progressive section visibility: hide secondary sections until clicked in the menu
   const [revealedSections, setRevealedSections] = useState<{
+    about: boolean;       // #sobre-nos (Quem Somos)
     process: boolean;     // #como-funciona
     solutions: boolean;   // #solucoes
     ebook: boolean;       // #ebook
     simulator: boolean;   // #simulador
     faq: boolean;         // #duvidas
   }>({
+    about: false,
     process: false,
     solutions: false,
     ebook: false,
@@ -68,7 +71,13 @@ export default function App() {
   } | null>(null);
 
   useEffect(() => {
-    fetchLeads();
+    // Sincroniza eventuais cadastros retidos offline antes de buscar do servidor
+    syncPendingVaultLeads()
+      .catch(() => {})
+      .finally(() => {
+        fetchLeads();
+      });
+
     // Track initial page view in backend analytics
     fetch('/api/analytics/pageview', { method: 'POST' }).catch(() => {});
   }, []);
@@ -79,7 +88,25 @@ export default function App() {
     try {
       localStorage.setItem('3p_partner_session', JSON.stringify(session));
     } catch (e) {}
-    setCrmOpen(true);
+    setLoginModalOpen(false);
+    fetchLeads();
+    
+    // Rola suavemente até o módulo de CRM, Instagram e Hostinger aparente na página
+    setTimeout(() => {
+      const section = document.getElementById('painel-socios');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 150);
+  };
+
+  const handleOpenPartnerSectionOrModal = () => {
+    const section = document.getElementById('painel-socios');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      setCrmOpen(true);
+    }
   };
 
   const handleLogoutPartner = () => {
@@ -91,11 +118,11 @@ export default function App() {
 
   const fetchLeads = async () => {
     try {
-      // Support WordPress REST API (/wp-json/p3/v1/leads) or local /api/leads
+      const overrides = getLeadStatusOverrides();
       const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
       const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
-      const primaryUrl = isWp ? '/wp-json/p3/v1/leads' : '/api/leads';
-      const fallbackUrl = primaryUrl === '/api/leads' ? '/wp-json/p3/v1/leads' : '/api/leads';
+      const primaryUrl = isWp ? (p3Data?.api_leads || '/wp-json/p3/v1/leads') : '/api/leads';
+      const fallbackUrl = primaryUrl === '/api/leads' ? (p3Data?.api_leads || '/wp-json/p3/v1/leads') : '/api/leads';
 
       let res = await fetch(primaryUrl);
       if (!res.ok && res.status === 404) {
@@ -103,10 +130,91 @@ export default function App() {
       }
       if (res.ok) {
         const data = await res.json();
-        if (data.leads) setLeads(data.leads);
+        if (data.leads && Array.isArray(data.leads)) {
+          // Aplica os overrides locais para manter status alterados no celular
+          const serverLeads: Lead[] = data.leads.map((l: Lead) => {
+            const ov = overrides[l.id];
+            if (ov) {
+              return {
+                ...l,
+                status: ov.status,
+                notes: ov.notes !== undefined ? ov.notes : l.notes,
+                assignedTo: ov.assignedTo || l.assignedTo,
+                assignedPartnerName: ov.assignedPartnerName || l.assignedPartnerName
+              };
+            }
+            return l;
+          });
+
+          // Mescla com leads do cofre local que ainda não foram gravados no servidor
+          const vaultItems = getLocalVaultLeads();
+          const unsyncedLeads: Lead[] = vaultItems
+            .filter(v => !v.synced && !serverLeads.some((l: Lead) => l.whatsapp === v.data.whatsapp))
+            .map(v => {
+              const ov = overrides[v.id];
+              return {
+                id: v.id,
+                createdAt: v.timestamp,
+                name: v.data.name,
+                whatsapp: v.data.whatsapp,
+                email: v.data.email,
+                objective: v.data.objective,
+                creditAmount: v.data.creditAmount || 'A definir',
+                monthlyInstallment: v.data.monthlyInstallment || '',
+                timeFrame: v.data.timeFrame,
+                hasBiddingFunds: v.data.hasBiddingFunds,
+                source: v.data.source || 'Cofre Local',
+                message: v.data.message || '',
+                consent: v.data.consent,
+                status: ov ? ov.status : ((v.data.status as LeadStatus) || 'Novo'),
+                notes: ov?.notes !== undefined ? ov.notes : v.data.notes,
+                utmSource: v.data.utmSource,
+                utmMedium: v.data.utmMedium,
+                utmCampaign: v.data.utmCampaign,
+                assignedTo: ov?.assignedTo || v.data.assignedTo,
+                assignedPartnerName: ov?.assignedPartnerName || v.data.assignedPartnerName
+              };
+            });
+
+          const distributed = distributeLeadsUniformly([...unsyncedLeads, ...serverLeads]);
+          setLeads(distributed);
+          return;
+        }
       }
     } catch (e) {
       console.error('Error fetching leads:', e);
+    }
+
+    // Fallback: em caso de falha de rede ou modo offline no celular, carrega do cofre local
+    const overrides = getLeadStatusOverrides();
+    const vaultItems = getLocalVaultLeads();
+    if (vaultItems.length > 0) {
+      const localLeads: Lead[] = vaultItems.map(v => {
+        const ov = overrides[v.id];
+        return {
+          id: v.id,
+          createdAt: v.timestamp,
+          name: v.data.name,
+          whatsapp: v.data.whatsapp,
+          email: v.data.email,
+          objective: v.data.objective,
+          creditAmount: v.data.creditAmount || 'A definir',
+          monthlyInstallment: v.data.monthlyInstallment || '',
+          timeFrame: v.data.timeFrame,
+          hasBiddingFunds: v.data.hasBiddingFunds,
+          source: v.data.source || 'Cofre Local',
+          message: v.data.message || '',
+          consent: v.data.consent,
+          status: ov ? ov.status : ((v.data.status as LeadStatus) || 'Novo'),
+          notes: ov?.notes !== undefined ? ov.notes : v.data.notes,
+          utmSource: v.data.utmSource,
+          utmMedium: v.data.utmMedium,
+          utmCampaign: v.data.utmCampaign,
+          assignedTo: ov?.assignedTo || v.data.assignedTo,
+          assignedPartnerName: ov?.assignedPartnerName || v.data.assignedPartnerName
+        };
+      });
+      setLeads(distributeLeadsUniformly(localLeads));
     }
   };
 
@@ -134,49 +242,134 @@ export default function App() {
   };
 
   const handleNewLeadCreated = (newLead: Lead) => {
-    setLeads((prev) => [newLead, ...prev]);
+    setLeads((prev) => {
+      let leadWithPartner = { ...newLead };
+      if (!leadWithPartner.assignedTo) {
+        const nextPartner = getNextPartnerForLead(prev);
+        leadWithPartner.assignedTo = nextPartner.email;
+        leadWithPartner.assignedPartnerName = nextPartner.name;
+      }
+      return [leadWithPartner, ...prev];
+    });
   };
 
-  const handleUpdateLeadStatus = async (id: string, status: LeadStatus, notes?: string) => {
+  const handleUpdateLeadStatus = async (
+    id: string,
+    status: LeadStatus,
+    notes?: string,
+    assignedTo?: string,
+    assignedPartnerName?: string
+  ) => {
+    // 1. ATUALIZAÇÃO OTIMISTA IMEDIATA NO ESTADO REACT (Resposta instantânea no celular)
+    setLeads((prev) =>
+      prev.map((l) => (l.id === id ? {
+        ...l,
+        status,
+        notes: notes !== undefined ? notes : l.notes,
+        assignedTo: assignedTo !== undefined ? assignedTo : l.assignedTo,
+        assignedPartnerName: assignedPartnerName !== undefined ? assignedPartnerName : l.assignedPartnerName
+      } : l))
+    );
+
+    // 2. SALVA LOCALMENTE NO NAVEGADOR (Garante que a mudança não se perde nem com reload ou sem sinal)
+    saveLeadStatusOverride(id, status, notes, assignedTo, assignedPartnerName);
+
+    // 3. SINCRONIZAÇÃO RESILIENTE COM O SERVIDOR (Aceita POST e PATCH, REST API e AJAX)
     try {
       const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
       const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
-      const primaryUrl = isWp ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
-      const fallbackUrl = primaryUrl.startsWith('/api') ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
+      
+      const wpBase = p3Data?.api_url ? p3Data.api_url.replace(/\/lead$/, '') : '/wp-json/p3/v1';
+      const primaryUrl = isWp ? `${wpBase}/lead/${id}` : `/api/leads/${id}`;
+      const fallbackUrl = primaryUrl.startsWith('/api') ? `${wpBase}/lead/${id}` : `/api/leads/${id}`;
 
+      const payload = JSON.stringify({ status, notes, assignedTo, assignedPartnerName });
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-HTTP-Method-Override': 'PATCH'
+      };
+      if (p3Data?.nonce) {
+        headers['X-WP-Nonce'] = p3Data.nonce;
+      }
+
+      // Tenta primeiro POST (compatível com todas as operadoras móveis e firewalls)
       let res = await fetch(primaryUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, notes })
+        method: 'POST',
+        headers,
+        body: payload
       });
-      if (!res.ok && res.status === 404) {
-        res = await fetch(fallbackUrl, {
+
+      if (!res.ok && (res.status === 404 || res.status === 405)) {
+        res = await fetch(primaryUrl, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status, notes })
+          headers,
+          body: payload
         });
       }
-      if (res.ok) {
-        fetchLeads();
+
+      if (!res.ok && (res.status === 404 || res.status === 405)) {
+        res = await fetch(fallbackUrl, {
+          method: 'POST',
+          headers,
+          body: payload
+        });
+        if (!res.ok) {
+          res = await fetch(fallbackUrl, {
+            method: 'PATCH',
+            headers,
+            body: payload
+          });
+        }
+      }
+
+      // Fallback via admin-ajax.php para WordPress se REST API for bloqueada por segurança
+      if (!res.ok && isWp && p3Data?.ajax_url) {
+        const formData = new URLSearchParams();
+        formData.append('action', 'p3_update_lead_status');
+        formData.append('security', p3Data.ajax_nonce || '');
+        formData.append('id', id);
+        formData.append('status', status);
+        if (notes) formData.append('notes', notes);
+
+        await fetch(p3Data.ajax_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData.toString()
+        });
       }
     } catch (e) {
-      console.error('Error updating lead status:', e);
+      console.warn('Erro na sincronização de status com o servidor (salvo localmente):', e);
     }
   };
 
   const handleDeleteLead = async (id: string) => {
+    // 1. Remoção otimista imediata da tela
+    setLeads((prev) => prev.filter((l) => l.id !== id));
+    removeLeadFromLocalVault(id);
+
     try {
       const p3Data = typeof window !== 'undefined' ? (window as any).P3_DATA : null;
       const isWp = p3Data?.api_url || (typeof window !== 'undefined' && !window.location.port.includes('3000') && !window.location.hostname.includes('run.app'));
-      const primaryUrl = isWp ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
-      const fallbackUrl = primaryUrl.startsWith('/api') ? `/wp-json/p3/v1/lead/${id}` : `/api/leads/${id}`;
+      const wpBase = p3Data?.api_url ? p3Data.api_url.replace(/\/lead$/, '') : '/wp-json/p3/v1';
+      const primaryUrl = isWp ? `${wpBase}/lead/${id}` : `/api/leads/${id}`;
+      const fallbackUrl = primaryUrl.startsWith('/api') ? `${wpBase}/lead/${id}` : `/api/leads/${id}`;
 
       let res = await fetch(primaryUrl, { method: 'DELETE' });
       if (!res.ok && res.status === 404) {
         res = await fetch(fallbackUrl, { method: 'DELETE' });
       }
-      if (res.ok) {
-        setLeads((prev) => prev.filter((l) => l.id !== id));
+
+      if (!res.ok && isWp && p3Data?.ajax_url) {
+        const formData = new URLSearchParams();
+        formData.append('action', 'p3_delete_lead');
+        formData.append('security', p3Data.ajax_nonce || '');
+        formData.append('id', id);
+
+        await fetch(p3Data.ajax_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData.toString()
+        });
       }
     } catch (e) {
       console.error('Error deleting lead:', e);
@@ -200,9 +393,20 @@ export default function App() {
 
   // Progressive navigation handler: reveals section on demand and smoothly scrolls
   const handleNavigate = (href: string) => {
-    const targetId = href.replace('#', '');
+    const targetId = href.replace('#', '').toLowerCase();
 
-    if (targetId === 'como-funciona') {
+    if (targetId === 'socios' || targetId === 'login' || targetId === 'crm' || targetId === 'admin') {
+      if (partnerUser?.loggedIn) {
+        setCrmOpen(true);
+      } else {
+        setLoginModalOpen(true);
+      }
+      return;
+    }
+
+    if (targetId === 'sobre-nos' || targetId === 'quem-somos') {
+      setRevealedSections((prev) => ({ ...prev, about: true }));
+    } else if (targetId === 'como-funciona') {
       setRevealedSections((prev) => ({ ...prev, process: true }));
     } else if (targetId === 'solucoes') {
       setRevealedSections((prev) => ({ ...prev, solutions: true }));
@@ -222,15 +426,35 @@ export default function App() {
     }, 80);
   };
 
-  // Handle URL hash on initial page load if direct link was used
+  // Handle URL hash and query params on initial page load if direct link was used
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash) {
-      handleNavigate(window.location.hash);
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash?.toLowerCase();
+      const params = new URLSearchParams(window.location.search);
+      if (hash.includes('socio') || hash.includes('login') || hash.includes('crm') || params.get('socios') || params.get('login') || params.get('crm')) {
+        setTimeout(() => {
+          let hasSession = false;
+          try {
+            const saved = localStorage.getItem('3p_partner_session');
+            if (saved && JSON.parse(saved)?.loggedIn) {
+              hasSession = true;
+            }
+          } catch {}
+
+          if (hasSession) {
+            setCrmOpen(true);
+          } else {
+            setLoginModalOpen(true);
+          }
+        }, 150);
+      } else if (window.location.hash) {
+        handleNavigate(window.location.hash);
+      }
     }
   }, []);
 
   const handleToggleSection = (
-    key: 'process' | 'solutions' | 'ebook' | 'simulator' | 'faq',
+    key: 'about' | 'process' | 'solutions' | 'ebook' | 'simulator' | 'faq',
     targetId: string
   ) => {
     setRevealedSections((prev) => {
@@ -248,6 +472,7 @@ export default function App() {
     if (showAllSections) {
       setShowAllSections(false);
       setRevealedSections({
+        about: false,
         process: false,
         solutions: false,
         ebook: false,
@@ -258,6 +483,7 @@ export default function App() {
     } else {
       setShowAllSections(true);
       setRevealedSections({
+        about: true,
         process: true,
         solutions: true,
         ebook: true,
@@ -281,6 +507,39 @@ export default function App() {
       {/* Floating Accessibility Widget */}
       <AccessibilityToolbar />
 
+      {/* Barra Superior de Sócio Conectado com Acesso Direto ao CRM */}
+      {partnerUser?.loggedIn && (
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-slate-950 font-bold px-3 py-2 text-xs shadow-lg sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 truncate">
+              <span className="bg-slate-950 text-amber-400 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
+                Área do Sócio
+              </span>
+              <span className="truncate hidden sm:inline">Conectado: <strong>{partnerUser.name}</strong></span>
+              <span className="text-[11px] bg-slate-950/20 px-2 py-0.5 rounded-full font-mono font-black">
+                {leads.length} {leads.length === 1 ? 'Lead' : 'Leads'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleOpenPartnerSectionOrModal}
+                className="bg-slate-950 hover:bg-slate-900 text-amber-400 hover:text-white px-3 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1.5 shadow transition-all active:scale-95"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Ver CRM & Painel dos Sócios</span>
+              </button>
+              <button
+                onClick={handleLogoutPartner}
+                className="bg-slate-950/15 hover:bg-slate-950/30 text-slate-950 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors"
+                title="Sair da sessão"
+              >
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Landmark */}
       <Header
         onOpenForm={handleScrollToForm}
@@ -289,21 +548,34 @@ export default function App() {
         onNavigate={handleNavigate}
         revealedSections={revealedSections}
         showAllSections={showAllSections}
+        partnerUser={partnerUser}
+        onOpenCRM={handleOpenPartnerSectionOrModal}
+        onOpenPartnerLogin={() => setLoginModalOpen(true)}
+        onLogoutPartner={handleLogoutPartner}
+        leadCount={leads.length}
       />
 
       {/* Main Content Landmark */}
       <main id="main-content" tabIndex={-1} className="outline-none">
+        {/* Painel do Sócio Aparente na Página: CRM, Instagram e Hostinger */}
+        {partnerUser?.loggedIn && (
+          <PartnerDashboardSection
+            partnerUser={partnerUser}
+            leads={leads}
+            onUpdateLeadStatus={handleUpdateLeadStatus}
+            onDeleteLead={handleDeleteLead}
+            onRefreshLeads={fetchLeads}
+            onLogoutPartner={handleLogoutPartner}
+            onOpenInstagramModal={() => setInstagramModalOpen(true)}
+            onOpenWPModal={() => setWpExportModalOpen(true)}
+          />
+        )}
+
         {/* 1. Início (Hero) - Always Visible */}
         <Hero
           onOpenForm={handleScrollToForm}
           isCompactHero={isCompactHero}
-          foundersPhotoUrl={foundersPhotoUrl}
-          heroBannerUrl={heroBannerUrl}
         />
-
-        {/* 2. Sobre Nós & Marca - Always Visible */}
-        <AboutUs foundersPhotoUrl={foundersPhotoUrl} />
-        <BrandMeaning />
 
         {/* Interactive Quick Discovery Bar between essential sections and form */}
         <SectionDiscoveryBar
@@ -313,6 +585,18 @@ export default function App() {
           onToggleAll={handleToggleAllSections}
           onOpenForm={handleScrollToForm}
         />
+
+        {/* 2. Quem Somos & Marca (Revealed on-demand via menu or discovery bar) */}
+        {(showAllSections || revealedSections.about) && (
+          <RevealedSectionWrapper
+            sectionName="Quem Somos"
+            onDismiss={() => setRevealedSections((prev) => ({ ...prev, about: false }))}
+            onScrollToTop={() => document.getElementById('inicio')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            <AboutUs />
+            <BrandMeaning />
+          </RevealedSectionWrapper>
+        )}
 
         {/* 3. Como Funciona (Revealed on-demand via menu or discovery bar) */}
         {(showAllSections || revealedSections.process) && (
@@ -365,6 +649,7 @@ export default function App() {
         <LeadForm
           preFilledData={preFilledFormData}
           onSuccess={handleNewLeadCreated}
+          existingLeads={leads}
         />
 
         {/* 8. Dúvidas Frequentes & FAQ (Revealed on-demand via menu or discovery bar) */}
@@ -384,7 +669,7 @@ export default function App() {
       <Footer 
         onOpenForm={handleScrollToForm} 
         onNavigate={handleNavigate}
-        onOpenCRM={() => setCrmOpen(true)}
+        onOpenCRM={handleOpenPartnerSectionOrModal}
         onOpenPartnerLogin={() => setLoginModalOpen(true)}
         onOpenInstagramStudio={() => setInstagramModalOpen(true)} 
         onOpenWPExport={() => setWpExportModalOpen(true)}
@@ -408,20 +693,22 @@ export default function App() {
           </span>
         </button>
 
-        {/* Floating CRM shortcut */}
-        <button
-          onClick={() => setCrmOpen(true)}
-          className="bg-slate-900 border border-slate-700 hover:border-amber-400 text-amber-400 p-3 rounded-full shadow-xl transition-all hover:scale-105 flex items-center justify-center relative"
-          title="Abrir CRM Administrador"
-          aria-label="Abrir CRM Administrador"
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          {leads.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-              {leads.length}
-            </span>
-          )}
-        </button>
+        {/* Floating CRM shortcut - Visível apenas para o sócio autenticado */}
+        {partnerUser?.loggedIn && (
+          <button
+            onClick={handleOpenPartnerSectionOrModal}
+            className="bg-slate-900 border border-slate-700 hover:border-amber-400 text-amber-400 p-3 rounded-full shadow-xl transition-all hover:scale-105 flex items-center justify-center relative"
+            title="Abrir Painel CRM"
+            aria-label="Abrir Painel CRM"
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            {leads.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                {leads.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Sticky Bottom Action Bar for Mobile Phones */}
@@ -443,19 +730,21 @@ export default function App() {
           <span>Simular Crédito</span>
         </button>
 
-        <button
-          onClick={() => setCrmOpen(true)}
-          className="bg-slate-900 border border-slate-800 active:bg-slate-800 text-amber-400 p-3 rounded-xl flex items-center justify-center relative shrink-0"
-          title="Abrir CRM"
-          aria-label="Abrir CRM Administrador"
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          {leads.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 text-[9px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center">
-              {leads.length}
-            </span>
-          )}
-        </button>
+        {partnerUser?.loggedIn && (
+          <button
+            onClick={handleOpenPartnerSectionOrModal}
+            className="bg-slate-900 border border-slate-800 active:bg-slate-800 text-amber-400 p-3 rounded-xl flex items-center justify-center relative shrink-0"
+            title="Abrir Painel CRM"
+            aria-label="Abrir Painel CRM"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            {leads.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 text-[9px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                {leads.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Admin CRM Lead Management Modal */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Globe, Download, Copy, Check, Server, FileCode, Database, Cpu, ExternalLink, ShieldAlert, Sparkles, Layers } from 'lucide-react';
+import { X, Globe, Download, Copy, Check, Server, FileCode, Database, Cpu, ExternalLink, ShieldAlert, Sparkles, Layers, GitBranch, AlertTriangle, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 
 interface WordPressExportModalProps {
@@ -11,7 +11,7 @@ export const WordPressExportModal: React.FC<WordPressExportModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const [activeTab, setActiveTab] = useState<'theme_zip' | 'guide' | 'php_template' | 'wp_plugin' | 'elementor'>('theme_zip');
+  const [activeTab, setActiveTab] = useState<'theme_zip' | 'guide' | 'php_template' | 'wp_plugin' | 'elementor' | 'github'>('github');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -149,6 +149,28 @@ function p3_register_admin_menu() {
   );
 }
 
+// 2.1 Ação de Exportar para XLS no WordPress
+add_action('admin_init', 'p3_handle_export_xls_leads');
+function p3_handle_export_xls_leads() {
+  if (isset($_GET['page']) && $_GET['page'] === 'p3-leads-manager' && isset($_GET['action']) && $_GET['action'] === 'export_xls') {
+    if (!current_user_can('manage_options')) wp_die('Acesso negado');
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'p3_leads';
+    $leads = $wpdb->get_results("SELECT * FROM $table_name ORDER BY id DESC");
+    $filename = 'leads_3p_patrimonio_' . date('Y-m-d') . '.xls';
+    header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    echo '<head><meta charset="UTF-8"><style>th{background:#020617;color:#fbbf24;padding:8px;border:1px solid #334155;}td{padding:6px;border:1px solid #cbd5e1;}</style></head><body>';
+    echo '<table border="1"><thead><tr><th>ID</th><th>Data</th><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Objetivo</th><th>Crédito</th><th>Parcela</th><th>Status</th><th>Notas</th></tr></thead><tbody>';
+    foreach ($leads as $l) {
+      echo '<tr><td>' . esc_html($l->id) . '</td><td>' . esc_html($l->created_at) . '</td><td>' . esc_html($l->name) . '</td><td>' . esc_html($l->whatsapp) . '</td><td>' . esc_html($l->email ?? '') . '</td><td>' . esc_html($l->objective) . '</td><td>' . esc_html($l->credit_amount) . '</td><td>' . esc_html($l->monthly_installment ?? '') . '</td><td>' . esc_html($l->status) . '</td><td>' . esc_html($l->notes ?? '') . '</td></tr>';
+    }
+    echo '</tbody></table></body></html>';
+    exit;
+  }
+}
+
 function p3_render_crm_page() {
   global $wpdb;
   $table_name = $wpdb->prefix . 'p3_leads';
@@ -156,10 +178,15 @@ function p3_render_crm_page() {
   $total = is_array($leads) ? count($leads) : 0;
   
   echo '<div class="wrap">';
-  echo '<h1 style="color:#d97706;">🏛️ Painel de Movimentação dos Sócios - 3P Patrimônio</h1>';
-  echo '<p>Hospedado no Hostinger WordPress • Total de Leads: ' . $total . '</p>';
+  echo '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin:20px 0; gap:12px;">';
+  echo '<div>';
+  echo '<h1 style="color:#d97706; margin:0;">🏛️ Central de Leads dos Sócios - 3P Patrimônio</h1>';
+  echo '<p style="margin:4px 0 0 0; color:#64748b;">Hospedado no Hostinger WordPress • Total de Leads: <strong>' . $total . '</strong></p>';
+  echo '</div>';
+  echo '<a href="' . admin_url('admin.php?page=p3-leads-manager&action=export_xls') . '" style="background:#10b981; color:#020617; font-weight:800; padding:10px 18px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(16,185,129,0.3);">📊 Exportar Planilha (.XLS)</a>';
+  echo '</div>';
   echo '<table class="wp-list-table widefat fixed striped">';
-  echo '<thead><tr><th>Data</th><th>Nome</th><th>WhatsApp</th><th>Objetivo</th><th>Crédito</th><th>Status</th></tr></thead>';
+  echo '<thead><tr><th>Data</th><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Objetivo</th><th>Crédito</th><th>Status</th></tr></thead>';
   echo '<tbody>';
   if ($total > 0) {
     foreach ($leads as $l) {
@@ -167,13 +194,14 @@ function p3_render_crm_page() {
       echo '<td>' . esc_html($l->created_at) . '</td>';
       echo '<td><strong>' . esc_html($l->name) . '</strong></td>';
       echo '<td>' . esc_html($l->whatsapp) . '</td>';
+      echo '<td>' . esc_html($l->email ?? '-') . '</td>';
       echo '<td>' . esc_html($l->objective) . '</td>';
       echo '<td>' . esc_html($l->credit_amount) . '</td>';
       echo '<td><span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:12px; font-weight:bold;">' . esc_html($l->status) . '</span></td>';
       echo '</tr>';
     }
   } else {
-    echo '<tr><td colspan="6" style="text-align:center; padding: 20px;">Nenhum lead capturado ainda.</td></tr>';
+    echo '<tr><td colspan="7" style="text-align:center; padding: 20px;">Nenhum lead capturado ainda.</td></tr>';
   }
   echo '</tbody></table>';
   echo '</div>';
@@ -319,6 +347,18 @@ function wp_p3_handle_instagram_webhook($request) {
           >
             <Layers className="w-4 h-4" />
             <span>4. Integração Elementor</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('github')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'github'
+                ? 'bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400/40'
+                : 'bg-slate-950 text-amber-400 hover:text-amber-300 border border-amber-500/40'
+            }`}
+          >
+            <GitBranch className="w-4 h-4 text-amber-400" />
+            <span>5. GitHub & Hostinger (Sem Erros)</span>
           </button>
         </div>
 
@@ -659,6 +699,95 @@ function wp_p3_handle_instagram_webhook($request) {
                     <span><strong>3P Patrimônio - Elementor Canvas:</strong> Tela 100% limpa (sem cabeçalho e rodapé), perfeita para criar páginas de captura ou obrigado.</span>
                   </li>
                 </ul>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 5: GITHUB & HOSTINGER DEPLOYMENT SEM ERROS */}
+          {activeTab === 'github' && (
+            <div className="space-y-6 text-xs text-slate-300">
+              
+              {/* Alerta de Diagnóstico */}
+              <div className="bg-red-500/10 border border-red-500/30 p-5 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <span>Por que o site sumiu ao conectar o GitHub à Hostinger?</span>
+                </div>
+                <p className="text-slate-300 text-xs leading-relaxed">
+                  O repositório anterior continha arquivos de desenvolvimento React (como <code className="text-red-300 bg-red-950/60 px-1 py-0.5 rounded font-mono">index.html</code> e <code className="text-red-300 bg-red-950/60 px-1 py-0.5 rounded font-mono">package.json</code>) que foram clonados diretamente na pasta raiz <code className="text-amber-300 bg-slate-950 px-1 py-0.5 rounded font-mono">public_html</code> da Hostinger. Como o servidor web (LiteSpeed/Apache) prioriza <code className="font-mono text-white">index.html</code> antes de <code className="font-mono text-white">index.php</code>, ele bloqueou a inicialização do WordPress.
+                </p>
+              </div>
+
+              {/* Design Autônomo e Sem Dependência de Fotos Externas */}
+              <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 p-5 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  <span>Design Executivo Puro (Sem Dependência de Fotos Externas)</span>
+                </div>
+                <p className="text-slate-300 leading-relaxed text-xs sm:text-sm">
+                  O projeto foi atualizado com design institucional vetorial de alta fidelidade para os 3 Pilares e composição patrimonial. Todos os ícones, logotipos e gráficos são nativos e autônomos, sem risco de imagens quebradas (404) ou necessidade de upload manual de fotos.
+                </p>
+              </div>
+
+              {/* Estrutura Limpa do GitHub */}
+              <div className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 text-white font-bold text-sm">
+                  <GitBranch className="w-5 h-5 text-emerald-400" />
+                  <span>Como deixar no GitHub APENAS o que funciona no WordPress</span>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  Para que você nunca mais corra risco de quebrar o WordPress ou perder dados ao fazer <code className="text-amber-300 font-mono">commit</code> e <code className="text-amber-300 font-mono">push</code>, seu repositório no GitHub deve conter <strong>exclusivamente</strong> a pasta do tema WordPress.
+                </p>
+
+                <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl font-mono text-[11px] text-slate-300 space-y-1">
+                  <div className="text-emerald-400 font-bold mb-1">📁 Estrutura Exata que deve ficar no seu GitHub:</div>
+                  <div>├── style.css             <span className="text-slate-500"># Identificação do tema no WordPress</span></div>
+                  <div>├── index.php             <span className="text-slate-500"># Entrada principal com chave seletora</span></div>
+                  <div>├── header.php            <span className="text-slate-500"># Cabeçalho executivo institucional</span></div>
+                  <div>├── footer.php            <span className="text-slate-500"># Rodapé institucional e scripts</span></div>
+                  <div>├── functions.php         <span className="text-slate-500"># Handlers de leads e rotas REST</span></div>
+                  <div>├── page-landing.php      <span className="text-slate-500"># Landing page NBR 3P Patrimônio</span></div>
+                  <div>├── page.php & single.php <span className="text-slate-500"># Compatibilidade total com páginas</span></div>
+                  <div>├── screenshot.png        <span className="text-slate-500"># Miniatura no painel WordPress</span></div>
+                  <div>└── assets/               <span className="text-slate-500"># Imagens, fotos e scripts compilados</span></div>
+                </div>
+
+                {/* Passo a Passo de Configuração */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl space-y-2">
+                    <div className="text-amber-400 font-bold text-xs flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-amber-500/20 text-center font-mono text-[10px] leading-5">A</span>
+                      Opção Mais Segura (2 minutos):
+                    </div>
+                    <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11px]">
+                      <li>Vá na <strong>Aba 1 (Baixar Tema .ZIP)</strong> e faça o download do pacote.</li>
+                      <li>Descompacte o arquivo no seu computador.</li>
+                      <li>Crie um repositório novo no GitHub chamado <code className="text-amber-300 font-mono">3p-patrimonio-tema</code>.</li>
+                      <li>Arraste e suba os arquivos descompactados para esse novo repositório.</li>
+                    </ol>
+                  </div>
+
+                  <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl space-y-2">
+                    <div className="text-emerald-400 font-bold text-xs flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-center font-mono text-[10px] leading-5">B</span>
+                      Configuração no Hostinger Git (CRUCIAL):
+                    </div>
+                    <p className="text-slate-300 text-[11px] leading-relaxed">
+                      No painel da Hostinger (hPanel) &rarr; <strong>Avançado &rarr; Git</strong>:
+                    </p>
+                    <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-[11px]">
+                      <span className="text-slate-400">Install Directory (Diretório de Instalação):</span>
+                      <div className="text-emerald-400 font-mono font-bold mt-0.5">
+                        public_html/wp-content/themes/3p-patrimonio
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      ⚠️ <strong>Atenção:</strong> NUNCA deixe o diretório de instalação vazio ou como <code>public_html</code>! Apontar para a pasta do tema garante que o WordPress nunca seja sobrescrito.
+                    </p>
+                  </div>
+                </div>
+
               </div>
 
             </div>

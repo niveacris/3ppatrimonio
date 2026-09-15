@@ -1,22 +1,28 @@
 import React from 'react';
-import { Users, ShieldCheck, HeartHandshake, Award, Quote, CheckCircle, User } from 'lucide-react';
+import { Users, ShieldCheck, HeartHandshake, Award, Quote, CheckCircle } from 'lucide-react';
+import { resolveAssetUrl } from '../utils/assets';
+import williamPhoto from '../assets/images/william.jpeg';
+import carlosPhoto from '../assets/images/carlos.jpeg';
+import joaoPhoto from '../assets/images/joao.jpeg';
 
-interface AboutUsProps {
-  foundersPhotoUrl?: string;
-}
-
-export const AboutUs: React.FC<AboutUsProps> = () => {
+export const AboutUs: React.FC = () => {
   const partners = [
     {
       name: 'William Lourenço',
+      role: 'Sócio Consultor',
+      photo: williamPhoto,
       description: 'Advogado e gestor com sólida trajetória em liderança, gestão de equipes e formação de pessoas.'
     },
     {
       name: 'Carlos Yoshimori',
+      role: 'Sócio Consultor',
+      photo: carlosPhoto,
       description: 'Advogado especializado em Direito Tributário e Imobiliário. Atuou por 23 anos como auditor fiscal da Prefeitura de São Paulo.'
     },
     {
       name: 'João Silva',
+      role: 'Sócio Consultor',
+      photo: joaoPhoto,
       description: 'Economista, contador e empresário contábil, com mais de 30 anos de experiência em contabilidade e gestão.'
     }
   ];
@@ -65,15 +71,34 @@ export const AboutUs: React.FC<AboutUsProps> = () => {
                 key={index}
                 className="bg-[#030919] border border-amber-500/50 hover:border-amber-400 rounded-2xl p-6 shadow-xl transition-all duration-300 flex flex-col items-center text-center space-y-4 relative overflow-hidden group hover:shadow-amber-500/10 hover:-translate-y-1"
               >
-                {/* Gold User Icon */}
-                <div className="w-14 h-14 rounded-full border border-amber-500/60 bg-amber-500/10 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-                  <User className="w-7 h-7 stroke-[1.75]" />
+                {/* Real Partner Photo in uniform small circular avatar style */}
+                <div className="relative">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-0.5 bg-gradient-to-br from-amber-400 via-amber-500/60 to-amber-600/40 shadow-lg shadow-amber-500/10 group-hover:scale-105 transition-transform duration-300">
+                    <img
+                      src={resolveAssetUrl(partner.photo)}
+                      alt={`Foto de ${partner.name}`}
+                      className="w-full h-full object-cover object-top rounded-full bg-slate-800"
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div 
+                    className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center text-slate-950 border-2 border-slate-950 text-[10px] font-black shadow"
+                    title="Sócio Consultor 3P Patrimônio"
+                  >
+                    ✓
+                  </div>
                 </div>
 
-                {/* Partner Name */}
-                <h4 className="text-lg font-bold text-amber-400 tracking-tight">
-                  {partner.name}
-                </h4>
+                {/* Partner Name & Role */}
+                <div className="space-y-0.5">
+                  <h4 className="text-lg font-bold text-amber-400 tracking-tight group-hover:text-amber-300 transition-colors">
+                    {partner.name}
+                  </h4>
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    {partner.role}
+                  </span>
+                </div>
 
                 {/* Partner Bio */}
                 <p className="text-[#d4d9e6] text-xs sm:text-[13px] leading-relaxed font-normal">

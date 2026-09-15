@@ -1,6 +1,27 @@
 {
   "leads": [
     {
+      "id": "lead-1788896631329-952",
+      "createdAt": "2026-09-08T19:43:51.329Z",
+      "name": "Carlos Teste",
+      "whatsapp": "(11) 99876-5432",
+      "email": "carlos.teste@exemplo.com.br",
+      "objective": "Download de E-book Patrimonial",
+      "creditAmount": "Não informado",
+      "monthlyInstallment": "Não informado",
+      "timeFrame": "Não informado",
+      "hasBiddingFunds": "Não informado",
+      "source": "Outro",
+      "message": "",
+      "consent": true,
+      "status": "Novo",
+      "utmSource": "ebook_download",
+      "utmMedium": "",
+      "utmCampaign": "",
+      "assignedTo": "william@3ppatrimonio.com.br",
+      "assignedPartnerName": "William Lourenço"
+    },
+    {
       "id": "lead-101",
       "createdAt": "2026-09-04T08:10:53.809Z",
       "name": "Carlos Eduardo Silva",
@@ -18,7 +39,9 @@
       "notes": "Lead vindo de anúncio do Instagram sobre Múltiplas Cotas.",
       "utmSource": "instagram",
       "utmMedium": "cpc",
-      "utmCampaign": "campanha_multi_cotas"
+      "utmCampaign": "campanha_multi_cotas",
+      "assignedTo": "joao@3ppatrimonio.com.br",
+      "assignedPartnerName": "João Silva"
     },
     {
       "id": "lead-102",
@@ -37,7 +60,9 @@
       "status": "Em Contato",
       "notes": "Primeiro contato realizado via WhatsApp. Reunião agendada para quinta-feira.",
       "utmSource": "google",
-      "utmMedium": "organic"
+      "utmMedium": "organic",
+      "assignedTo": "carlos@3ppatrimonio.com.br",
+      "assignedPartnerName": "Carlos Yoshimori"
     },
     {
       "id": "lead-103",
@@ -55,8 +80,52 @@
       "consent": true,
       "status": "Análise Enviada",
       "notes": "Proposta de 4 cartas de R$ 350 mil enviada por e-mail.",
-      "utmSource": "indicacao"
+      "utmSource": "indicacao",
+      "assignedTo": "william@3ppatrimonio.com.br",
+      "assignedPartnerName": "William Lourenço"
     }
   ],
-  "pageViews": 154
+  "pageViews": 164,
+  "partnerAccounts": {
+    "william@3ppatrimonio.com.br": {
+      "id": "william",
+      "email": "william@3ppatrimonio.com.br",
+      "name": "William Lourenço",
+      "phone": "5511996876748",
+      "password": "3P@socios",
+      "mustChangePassword": true
+    },
+    "carlos@3ppatrimonio.com.br": {
+      "id": "carlos",
+      "email": "carlos@3ppatrimonio.com.br",
+      "name": "Carlos Yoshimori",
+      "phone": "5511996876748",
+      "password": "3P@socios",
+      "mustChangePassword": true
+    },
+    "joao@3ppatrimonio.com.br": {
+      "id": "joao",
+      "email": "joao@3ppatrimonio.com.br",
+      "name": "João Silva",
+      "phone": "5511996876748",
+      "password": "3P@socios",
+      "mustChangePassword": true
+    },
+    "niveacristinas@gmail.com": {
+      "id": "nivea",
+      "email": "niveacristinas@gmail.com",
+      "name": "Nívea Cristina (Sócia Gestora)",
+      "phone": "5511996876748",
+      "password": "3P@socios",
+      "mustChangePassword": true
+    },
+    "contato@3ppatrimonio.com.br": {
+      "id": "contato",
+      "email": "contato@3ppatrimonio.com.br",
+      "name": "Contato 3P Patrimônio",
+      "phone": "5511996876748",
+      "password": "3P@socios",
+      "mustChangePassword": true
+    }
+  }
 }

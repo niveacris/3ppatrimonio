@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X, LayoutDashboard, Users, Download, Zap, BarChart2,
   Phone, Mail, MessageSquare, Search, Trash2, Edit3, Check, RefreshCw, Send, Sliders, Globe, Lock, ShieldCheck,
-  Instagram, Copy, Sparkles, ExternalLink, Bot, Layers
+  Instagram, Copy, Sparkles, ExternalLink, Bot, Layers, FileSpreadsheet, UserCheck
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Lead, LeadStatus, AnalyticsStats, WebhookConfig } from '../types';
+import { formatSafeDate, formatSafeTime } from '../utils/dateUtils';
+import { ErrorBoundary } from './ErrorBoundary';
 import { BrandLogo } from './BrandLogo';
+import { PARTNERS, getPartnerByEmail } from '../utils/partnerConfig';
+import { resolveAssetUrl } from '../utils/assets';
 
 interface CrmModalProps {
   isOpen: boolean;
   onClose: () => void;
   leads: Lead[];
-  onUpdateLeadStatus: (id: string, status: LeadStatus, notes?: string) => void;
+  onUpdateLeadStatus: (id: string, status: LeadStatus, notes?: string, assignedTo?: string, assignedPartnerName?: string) => void;
   onDeleteLead: (id: string) => void;
   onRefreshLeads: () => void;
   onOpenWPExport?: () => void;
@@ -35,6 +40,7 @@ export const CrmModal: React.FC<CrmModalProps> = ({
   const [activeTab, setActiveTab] = useState<'kanban' | 'table' | 'analytics' | 'automation' | 'instagram'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('todos');
+  const [partnerFilter, setPartnerFilter] = useState<string>('todos');
   
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState('');
@@ -55,6 +61,45 @@ export const CrmModal: React.FC<CrmModalProps> = ({
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [simulatingIg, setSimulatingIg] = useState(false);
   const [igSimFeedback, setIgSimFeedback] = useState('');
+
+  // Excel Export states (Declared at the top with all other hooks to satisfy React Rules of Hooks)
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'xls' | 'xlsx' | null>(null);
+  const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
+
+  // Contagem por sócio
+  const partnerCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      'william@3ppatrimonio.com.br': 0,
+      'carlos@3ppatrimonio.com.br': 0,
+      'joao@3ppatrimonio.com.br': 0
+    };
+    (leads || []).forEach(lead => {
+      const email = lead.assignedTo || '';
+      if (counts[email] !== undefined) {
+        counts[email]++;
+      }
+    });
+    return counts;
+  }, [leads]);
+
+  const handleStatusChange = (id: string, newStatus: LeadStatus) => {
+    const lead = leads.find(l => l.id === id);
+    onUpdateLeadStatus(id, newStatus, lead?.notes, lead?.assignedTo, lead?.assignedPartnerName);
+    setStatusFeedback(`✓ Status alterado para "${newStatus}"`);
+    setTimeout(() => setStatusFeedback(null), 3500);
+  };
+
+  const handleReassignLead = (leadId: string, targetEmail: string) => {
+    const targetPartner = PARTNERS.find(p => p.email === targetEmail);
+    const lead = leads.find(l => l.id === leadId);
+    if (targetPartner && lead) {
+      onUpdateLeadStatus(leadId, lead.status, lead.notes, targetPartner.email, targetPartner.name);
+      setStatusFeedback(`✓ Lead transferido para ${targetPartner.name}`);
+      setTimeout(() => setStatusFeedback(null), 3500);
+    }
+  };
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -135,19 +180,24 @@ export const CrmModal: React.FC<CrmModalProps> = ({
 
   const statuses: LeadStatus[] = ['Novo', 'Em Contato', 'Análise Enviada', 'Em Negociação', 'Contratado', 'Perdido'];
 
-  const filteredLeads = leads.filter(l => {
-    const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.whatsapp.includes(searchTerm) ||
-      l.objective.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredLeads = (leads || []).filter(l => {
+    if (!l) return false;
+    const name = String(l.name || '').toLowerCase();
+    const phone = String(l.whatsapp || '');
+    const obj = String(l.objective || '').toLowerCase();
+    const search = String(searchTerm || '').toLowerCase();
     
+    const matchesSearch = !search || name.includes(search) || phone.includes(search) || obj.includes(search);
     const matchesStatus = selectedStatusFilter === 'todos' || l.status === selectedStatusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesPartner = partnerFilter === 'todos' || l.assignedTo === partnerFilter;
+    return matchesSearch && matchesStatus && matchesPartner;
   });
 
   const handleOpenWhatsApp = (lead: Lead) => {
-    const cleanPhone = lead.whatsapp.replace(/\D/g, '');
+    const cleanPhone = String(lead?.whatsapp || '').replace(/\D/g, '');
+    const partnerFirstName = partnerUser?.name?.split(' ')[0] || 'consultor';
     const message = encodeURIComponent(
-      `Olá, ${lead.name}! Sou consultor da 3P Patrimônio. Recebi sua solicitação referente ao objetivo: "${lead.objective}".\nPodemos conversar sobre a análise do crédito de ${lead.creditAmount}?`
+      `Olá, ${lead?.name || 'Cliente'}! Sou o ${partnerFirstName} da 3P Patrimônio. Recebi sua solicitação referente ao objetivo: "${lead?.objective || 'Planejamento Patrimonial'}".\nPodemos conversar sobre a análise do crédito de ${lead?.creditAmount || ''}?`
     );
     window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
   };
@@ -155,13 +205,97 @@ export const CrmModal: React.FC<CrmModalProps> = ({
   const handleSaveNotes = (id: string) => {
     const lead = leads.find(l => l.id === id);
     if (lead) {
-      onUpdateLeadStatus(id, lead.status, notesInput);
+      onUpdateLeadStatus(id, lead.status, notesInput, lead.assignedTo, lead.assignedPartnerName);
       setEditingNotesId(null);
     }
   };
 
+  const handleExport = (format: 'xls' | 'xlsx' = 'xls') => {
+    try {
+      setIsExportingExcel(true);
+      setExportFormat(format);
+      const listToExport = filteredLeads.length > 0 ? filteredLeads : leads;
+
+      if (!listToExport || listToExport.length === 0) {
+        setExportFeedback('Nenhum lead encontrado para exportar.');
+        setTimeout(() => setExportFeedback(null), 3000);
+        setIsExportingExcel(false);
+        setExportFormat(null);
+        return;
+      }
+
+      const excelRows = listToExport.map((lead, idx) => ({
+        'Nº': idx + 1,
+        'Data': formatSafeDate(lead.createdAt),
+        'Hora': formatSafeTime(lead.createdAt),
+        'Sócio Responsável': lead.assignedPartnerName ? `${lead.assignedPartnerName} (${lead.assignedTo || ''})` : 'Distribuído 3P',
+        'Nome Completo': lead.name || '',
+        'WhatsApp / Telefone': lead.whatsapp || '',
+        'E-mail': lead.email || 'Não informado',
+        'Objetivo Principal': lead.objective || '',
+        'Volume de Crédito': lead.creditAmount || '',
+        'Parcela Estimada': lead.monthlyInstallment || '',
+        'Prazo Desejado': lead.timeFrame || '',
+        'Possui Recurso p/ Lance': lead.hasBiddingFunds || '',
+        'Status Atual': lead.status || 'Novo',
+        'Canal de Entrada': lead.source || 'Site Institucional',
+        'Campanha / Origem': lead.utmCampaign || lead.utmSource || 'Acesso Direto',
+        'Observações do Sócio': lead.notes || '',
+        'Mensagem Inicial': lead.message || ''
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+
+      // Largura visual das colunas no Excel
+      worksheet['!cols'] = [
+        { wch: 6 },  // Nº
+        { wch: 14 }, // Data
+        { wch: 10 }, // Hora
+        { wch: 28 }, // Sócio Responsável
+        { wch: 26 }, // Nome
+        { wch: 20 }, // WhatsApp
+        { wch: 28 }, // E-mail
+        { wch: 30 }, // Objetivo
+        { wch: 22 }, // Crédito
+        { wch: 20 }, // Parcela
+        { wch: 16 }, // Prazo
+        { wch: 22 }, // Lance
+        { wch: 18 }, // Status
+        { wch: 20 }, // Canal
+        { wch: 22 }, // Campanha
+        { wch: 35 }, // Observações
+        { wch: 40 }  // Mensagem
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads 3P Patrimônio');
+
+      const dataHoje = new Date().toISOString().slice(0, 10);
+      
+      if (format === 'xls') {
+        const filename = `leads_3p_patrimonio_${dataHoje}.xls`;
+        XLSX.writeFile(workbook, filename, { bookType: 'biff8' });
+        setExportFeedback(`✓ Planilha XLS exportada com ${listToExport.length} lead(s)!`);
+      } else {
+        const filename = `leads_3p_patrimonio_${dataHoje}.xlsx`;
+        XLSX.writeFile(workbook, filename, { bookType: 'xlsx' });
+        setExportFeedback(`✓ Planilha XLSX exportada com ${listToExport.length} lead(s)!`);
+      }
+
+      setTimeout(() => setExportFeedback(null), 3500);
+    } catch (err) {
+      console.error('Erro ao exportar planilha:', err);
+      setExportFeedback('Erro ao gerar planilha. Tente novamente.');
+      setTimeout(() => setExportFeedback(null), 3000);
+    } finally {
+      setIsExportingExcel(false);
+      setExportFormat(null);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-4">
+    <ErrorBoundary fallbackTitle="Painel CRM dos Sócios">
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-4 animate-fadeIn">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
         
         {/* Header Bar */}
@@ -193,6 +327,12 @@ export const CrmModal: React.FC<CrmModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {exportFeedback && (
+              <span className="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl font-bold animate-pulse">
+                {exportFeedback}
+              </span>
+            )}
+
             {onOpenInstagramStudio && (
               <button
                 onClick={onOpenInstagramStudio}
@@ -215,14 +355,26 @@ export const CrmModal: React.FC<CrmModalProps> = ({
               </button>
             )}
 
-            <a
-              href="/api/leads/export/csv"
-              download
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl border border-slate-700 flex items-center gap-1.5 font-medium transition-colors"
+            <button
+              onClick={() => handleExport('xls')}
+              disabled={isExportingExcel}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 font-black transition-all shadow-md active:scale-95 disabled:opacity-50"
+              title="Exportar todos os leads em planilha Excel (.xls)"
             >
-              <Download className="w-4 h-4 text-amber-400" />
-              <span className="hidden sm:inline">Exportar CSV</span>
-            </a>
+              <FileSpreadsheet className="w-4 h-4 text-slate-950" />
+              <span>
+                {isExportingExcel && exportFormat === 'xls' ? 'Gerando XLS...' : 'Exportar XLS'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => handleExport('xlsx')}
+              disabled={isExportingExcel}
+              className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs px-3 py-2 rounded-xl hidden sm:flex items-center gap-1.5 font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+              title="Exportar em formato XLSX (.xlsx)"
+            >
+              <span>.XLSX</span>
+            </button>
 
             <button
               onClick={onClose}
@@ -316,16 +468,102 @@ export const CrmModal: React.FC<CrmModalProps> = ({
           {/* 1. KANBAN TAB */}
           {activeTab === 'kanban' && (
             <div className="space-y-4 h-full flex flex-col">
-              {/* Search Bar */}
-              <div className="relative max-w-md">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                <input
-                  type="text"
-                  placeholder="Buscar lead por nome, telefone ou objetivo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none"
-                />
+              {/* Partner Distribution Quick Bar */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                  <UserCheck className="w-4 h-4 text-amber-400" />
+                  <span>Distribuição entre os Sócios:</span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {PARTNERS.map(p => {
+                    const count = partnerCounts[p.email] || 0;
+                    const isSelected = partnerFilter === p.email;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setPartnerFilter(isSelected ? 'todos' : p.email)}
+                        className={`px-2.5 py-1 rounded-xl text-xs flex items-center gap-1.5 transition-all border cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow'
+                            : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <img
+                          src={resolveAssetUrl(p.avatar)}
+                          alt={p.name}
+                          className="w-4 h-4 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <span>{p.name.split(' ')[0]}</span>
+                        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-slate-950 text-amber-400 font-bold' : 'bg-slate-800 text-slate-300'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {partnerFilter !== 'todos' && (
+                    <button
+                      onClick={() => setPartnerFilter('todos')}
+                      className="text-[11px] text-amber-400 hover:underline px-1 font-bold"
+                    >
+                      Limpar filtro
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Search Bar & Export Toolbar */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-1 min-w-[240px] flex-wrap">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      placeholder="Buscar lead por nome, telefone ou objetivo..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none"
+                    />
+                  </div>
+
+                  <select
+                    value={partnerFilter}
+                    onChange={(e) => setPartnerFilter(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 text-amber-400 font-bold text-xs px-3 py-2 rounded-xl outline-none cursor-pointer"
+                  >
+                    <option value="todos">Todos os Sócios ({leads.length})</option>
+                    <option value="william@3ppatrimonio.com.br">William Lourenço ({partnerCounts['william@3ppatrimonio.com.br'] || 0})</option>
+                    <option value="carlos@3ppatrimonio.com.br">Carlos Yoshimori ({partnerCounts['carlos@3ppatrimonio.com.br'] || 0})</option>
+                    <option value="joao@3ppatrimonio.com.br">João Silva ({partnerCounts['joao@3ppatrimonio.com.br'] || 0})</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleExport('xls')}
+                    disabled={isExportingExcel}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50"
+                    title="Exportar funil Kanban para arquivo .XLS"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-slate-950" />
+                    <span>Exportar XLS</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleExport('xlsx')}
+                    disabled={isExportingExcel}
+                    className="bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-700 text-xs px-2.5 py-2 rounded-xl font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                    title="Exportar funil Kanban para arquivo .XLSX"
+                  >
+                    <span>.XLSX</span>
+                  </button>
+
+                  {statusFeedback && (
+                    <span className="text-xs text-amber-400 font-bold bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/30 animate-pulse">
+                      {statusFeedback}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Columns */}
@@ -344,58 +582,90 @@ export const CrmModal: React.FC<CrmModalProps> = ({
 
                       <div className="space-y-3 flex-1 overflow-y-auto">
                         {columnLeads.length > 0 ? (
-                          columnLeads.map((lead) => (
-                            <div
-                              key={lead.id}
-                              className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 p-3 rounded-xl space-y-2 text-xs shadow-md"
-                            >
-                              <div className="flex items-start justify-between">
-                                <strong className="text-white font-bold leading-tight block">{lead.name}</strong>
-                                <button
-                                  onClick={() => onDeleteLead(lead.id)}
-                                  className="text-slate-600 hover:text-red-400 p-0.5"
-                                  title="Remover lead"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                          columnLeads.map((lead) => {
+                            const partner = getPartnerByEmail(lead.assignedTo);
+                            return (
+                              <div
+                                key={lead.id}
+                                className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 p-3 rounded-xl space-y-2 text-xs shadow-md"
+                              >
+                                {/* Sócio Responsável & Troca */}
+                                <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-900">
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    {partner?.avatar && (
+                                      <img
+                                        src={resolveAssetUrl(partner.avatar)}
+                                        alt={partner.name}
+                                        className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                                        referrerPolicy="no-referrer"
+                                      />
+                                    )}
+                                    <span className="text-[10px] font-bold text-amber-400 truncate">
+                                      {lead.assignedPartnerName || partner?.name || 'Sócio 3P'}
+                                    </span>
+                                  </div>
+                                  <select
+                                    value={lead.assignedTo || ''}
+                                    onChange={(e) => handleReassignLead(lead.id, e.target.value)}
+                                    className="text-[9px] bg-slate-900 text-slate-400 border border-slate-800 rounded px-1 py-0.5 outline-none cursor-pointer hover:text-white"
+                                    title="Transferir para outro sócio"
+                                  >
+                                    {PARTNERS.map(p => (
+                                      <option key={p.email} value={p.email}>
+                                        {p.name.split(' ')[0]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="flex items-start justify-between">
+                                  <strong className="text-white font-bold leading-tight block">{lead.name}</strong>
+                                  <button
+                                    onClick={() => onDeleteLead(lead.id)}
+                                    className="text-slate-600 hover:text-red-400 p-0.5"
+                                    title="Remover lead"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                <div className="text-[11px] text-amber-400 font-medium">
+                                  {lead.objective}
+                                </div>
+
+                                <div className="text-[11px] text-slate-400">
+                                  💰 Crédito: {lead.creditAmount}
+                                </div>
+
+                                <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-900">
+                                  <span>{formatSafeDate(lead.createdAt)}</span>
+                                  <span className="uppercase text-amber-500/80 font-mono">{lead.source}</span>
+                                </div>
+
+                                {/* Status Switcher Select */}
+                                <div className="pt-2 flex items-center gap-1.5">
+                                  <select
+                                    value={lead.status}
+                                    onChange={(e) => handleStatusChange(lead.id, e.target.value as LeadStatus)}
+                                    className="bg-slate-900 text-slate-200 border border-slate-700 hover:border-amber-500/60 focus:border-amber-500 rounded-lg text-xs sm:text-[11px] px-2.5 py-1.5 min-h-[38px] sm:min-h-[30px] flex-1 outline-none font-semibold cursor-pointer transition-colors touch-manipulation"
+                                  >
+                                    {statuses.map(s => (
+                                      <option key={s} value={s} className="bg-slate-900 text-slate-200">{s}</option>
+                                    ))}
+                                  </select>
+
+                                  <button
+                                    onClick={() => handleOpenWhatsApp(lead)}
+                                    className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 p-1.5 rounded-lg transition-colors"
+                                    title="Iniciar conversa no WhatsApp"
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
                               </div>
-
-                              <div className="text-[11px] text-amber-400 font-medium">
-                                {lead.objective}
-                              </div>
-
-                              <div className="text-[11px] text-slate-400">
-                                💰 Crédito: {lead.creditAmount}
-                              </div>
-
-                              <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-900">
-                                <span>{new Date(lead.createdAt).toLocaleDateString('pt-BR')}</span>
-                                <span className="uppercase text-amber-500/80 font-mono">{lead.source}</span>
-                              </div>
-
-                              {/* Status Switcher Select */}
-                              <div className="pt-2 flex items-center gap-1.5">
-                                <select
-                                  value={lead.status}
-                                  onChange={(e) => onUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
-                                  className="bg-slate-900 text-slate-300 border border-slate-800 rounded-lg text-[10px] px-2 py-1 flex-1 outline-none font-medium"
-                                >
-                                  {statuses.map(s => (
-                                    <option key={s} value={s}>{s}</option>
-                                  ))}
-                                </select>
-
-                                <button
-                                  onClick={() => handleOpenWhatsApp(lead)}
-                                  className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 p-1.5 rounded-lg transition-colors"
-                                  title="Iniciar conversa no WhatsApp"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
-                            </div>
-                          ))
+                            );
+                          })
                         ) : (
                           <div className="text-center py-6 text-[11px] text-slate-600 italic">
                             Nenhum lead
@@ -425,8 +695,18 @@ export const CrmModal: React.FC<CrmModalProps> = ({
                   />
                 </div>
 
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-slate-400">Status:</span>
+                <div className="flex items-center gap-2 text-xs flex-wrap">
+                  <select
+                    value={partnerFilter}
+                    onChange={(e) => setPartnerFilter(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 text-amber-400 font-bold rounded-xl px-3 py-2 text-xs outline-none cursor-pointer"
+                  >
+                    <option value="todos">Todos os Sócios</option>
+                    <option value="william@3ppatrimonio.com.br">William Lourenço</option>
+                    <option value="carlos@3ppatrimonio.com.br">Carlos Yoshimori</option>
+                    <option value="joao@3ppatrimonio.com.br">João Silva</option>
+                  </select>
+
                   <select
                     value={selectedStatusFilter}
                     onChange={(e) => setSelectedStatusFilter(e.target.value)}
@@ -437,6 +717,25 @@ export const CrmModal: React.FC<CrmModalProps> = ({
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
+
+                  <button
+                    onClick={() => handleExport('xls')}
+                    disabled={isExportingExcel}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50"
+                    title="Baixar dados da tabela em formato XLS (.xls)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-slate-950" />
+                    <span>Baixar XLS</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleExport('xlsx')}
+                    disabled={isExportingExcel}
+                    className="bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-700 text-xs px-2.5 py-2 rounded-xl font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                    title="Baixar dados da tabela em formato XLSX (.xlsx)"
+                  >
+                    <span>.XLSX</span>
+                  </button>
                 </div>
               </div>
 
@@ -445,6 +744,7 @@ export const CrmModal: React.FC<CrmModalProps> = ({
                   <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
                     <tr>
                       <th className="p-3">Data</th>
+                      <th className="p-3">Sócio Responsável</th>
                       <th className="p-3">Nome / Contato</th>
                       <th className="p-3">Objetivo</th>
                       <th className="p-3">Crédito / Parcela</th>
@@ -454,63 +754,93 @@ export const CrmModal: React.FC<CrmModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-850">
-                    {filteredLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-slate-850/50 transition-colors">
-                        <td className="p-3 text-slate-400 font-mono text-[11px]">
-                          {new Date(lead.createdAt).toLocaleDateString('pt-BR')}<br />
-                          <span className="text-[10px] text-slate-500">{new Date(lead.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </td>
+                    {filteredLeads.map((lead) => {
+                      const partner = getPartnerByEmail(lead.assignedTo);
+                      return (
+                        <tr key={lead.id} className="hover:bg-slate-850/50 transition-colors">
+                          <td className="p-3 text-slate-400 font-mono text-[11px]">
+                            {formatSafeDate(lead.createdAt)}<br />
+                            <span className="text-[10px] text-slate-500">{formatSafeTime(lead.createdAt)}</span>
+                          </td>
 
-                        <td className="p-3">
-                          <div className="font-bold text-white">{lead.name}</div>
-                          <div className="text-[11px] text-amber-400">{lead.whatsapp}</div>
-                          {lead.email && <div className="text-[10px] text-slate-500">{lead.email}</div>}
-                        </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              {partner?.avatar && (
+                                <img
+                                  src={resolveAssetUrl(partner.avatar)}
+                                  alt={partner.name}
+                                  className="w-6 h-6 rounded-full object-cover shrink-0 border border-amber-500/30"
+                                  referrerPolicy="no-referrer"
+                                />
+                              )}
+                              <div>
+                                <select
+                                  value={lead.assignedTo || ''}
+                                  onChange={(e) => handleReassignLead(lead.id, e.target.value)}
+                                  className="bg-slate-950 border border-slate-800 text-amber-400 text-xs font-bold rounded px-1.5 py-0.5 outline-none cursor-pointer"
+                                >
+                                  {PARTNERS.map(p => (
+                                    <option key={p.email} value={p.email}>
+                                      {p.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="text-[9px] text-slate-500">{lead.assignedTo}</div>
+                              </div>
+                            </div>
+                          </td>
 
-                        <td className="p-3 font-medium text-slate-200">
-                          {lead.objective}
-                        </td>
+                          <td className="p-3">
+                            <div className="font-bold text-white">{lead.name}</div>
+                            <div className="text-[11px] text-amber-400">{lead.whatsapp}</div>
+                            {lead.email && <div className="text-[10px] text-slate-500">{lead.email}</div>}
+                          </td>
 
-                        <td className="p-3">
-                          <div className="text-amber-300 font-semibold">{lead.creditAmount}</div>
-                          <div className="text-[11px] text-slate-400">Parc: {lead.monthlyInstallment}</div>
-                        </td>
+                          <td className="p-3 font-medium text-slate-200">
+                            {lead.objective}
+                          </td>
 
-                        <td className="p-3 text-[11px]">
-                          <div>Prazo: {lead.timeFrame}</div>
-                          <div className="text-slate-400">Lance: {lead.hasBiddingFunds}</div>
-                        </td>
+                          <td className="p-3">
+                            <div className="text-amber-300 font-semibold">{lead.creditAmount}</div>
+                            <div className="text-[11px] text-slate-400">Parc: {lead.monthlyInstallment}</div>
+                          </td>
 
-                        <td className="p-3">
-                          <select
-                            value={lead.status}
-                            onChange={(e) => onUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
-                            className="bg-slate-950 border border-slate-800 text-amber-400 text-xs rounded-lg px-2 py-1 outline-none font-bold"
-                          >
-                            {statuses.map(s => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
-                        </td>
+                          <td className="p-3 text-[11px]">
+                            <div>Prazo: {lead.timeFrame}</div>
+                            <div className="text-slate-400">Lance: {lead.hasBiddingFunds}</div>
+                          </td>
 
-                        <td className="p-3 text-right space-x-2">
-                          <button
-                            onClick={() => handleOpenWhatsApp(lead)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 rounded-lg text-xs"
-                            title="Conversar no Whats"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteLead(lead.id)}
-                            className="bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 p-1.5 rounded-lg text-xs"
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="p-3">
+                            <select
+                              value={lead.status}
+                              onChange={(e) => handleStatusChange(lead.id, e.target.value as LeadStatus)}
+                              className="bg-slate-950 border border-slate-700 hover:border-amber-500/60 focus:border-amber-500 text-amber-400 text-xs rounded-lg px-2.5 py-1.5 min-h-[38px] sm:min-h-[32px] outline-none font-bold cursor-pointer transition-colors touch-manipulation"
+                            >
+                              {statuses.map(s => (
+                                <option key={s} value={s} className="bg-slate-900 text-slate-200">{s}</option>
+                              ))}
+                            </select>
+                          </td>
+
+                          <td className="p-3 text-right space-x-2">
+                            <button
+                              onClick={() => handleOpenWhatsApp(lead)}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white p-1.5 rounded-lg text-xs"
+                              title="Conversar no Whats"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => onDeleteLead(lead.id)}
+                              className="bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 p-1.5 rounded-lg text-xs"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -864,5 +1194,6 @@ export const CrmModal: React.FC<CrmModalProps> = ({
 
       </div>
     </div>
+    </ErrorBoundary>
   );
 };

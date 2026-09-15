@@ -29,6 +29,11 @@ export function resolveAssetUrl(url?: string | null): string {
     return url;
   }
 
+  // Se o WordPress forneceu a URL direta da foto dos sócios/screenshot
+  if (typeof window !== 'undefined' && (url.includes('screenshot') || url.includes('socios')) && window.P3_DATA?.founders_photo) {
+    return window.P3_DATA.founders_photo;
+  }
+
   // Detecta se estamos rodando dentro do WordPress (window.P3_DATA.theme_url fornecido pelo PHP)
   if (typeof window !== 'undefined' && window.P3_DATA?.theme_url) {
     const themeUrl = window.P3_DATA.theme_url.replace(/\/+$/, '');
